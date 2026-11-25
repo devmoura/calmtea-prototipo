@@ -58,13 +58,13 @@ export const screenRegistry: Array<{
     id: "T09",
     title: "Player de áudio",
     status: "IMPLEMENTADA",
-    behavior: "Player demonstrativo sem áudio real, com estados e volume.",
+    behavior: "Player HTML5 com faixas MP3 locais, controles de volume, progresso, pausa e parada.",
   },
   {
     id: "T10",
     title: "Monte seu espaço",
     status: "IMPLEMENTADA",
-    behavior: "J01 com adicionar, mover, remover, desfazer, limpar e sair.",
+    behavior: "J01 com nove elementos, desenho livre, borracha, desfazer, limpar e sair.",
   },
   {
     id: "T11",

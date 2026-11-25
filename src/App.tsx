@@ -31,6 +31,8 @@ import {
   type Screen,
 } from "./navigation";
 import { qaRegistry, screenRegistry } from "./screenRegistry";
+import { audioTracks, audioTrackById, audioPath, type AudioTrackId } from "./audioLibrary";
+import { EditorialIllustration, type IllustrationKind } from "./Illustrations";
 import {
   createSessionId,
   joinOzSession,
@@ -46,7 +48,7 @@ type Feedback = { tone: "info" | "success"; text: string } | null;
 type StrategyId = "pause" | "breath" | "music" | "space";
 type BreathState = "idle" | "active" | "paused";
 type AudioState = "idle" | "playing" | "paused" | "error";
-type SceneKind = "planta" | "mesa" | "luz" | "almofada";
+type SceneKind = "planta" | "mesa" | "luz" | "almofada" | "poltrona" | "livro" | "tapete" | "quadro" | "luminaria";
 type PermissionDemoState = "off" | "granted-demo" | "denied-demo";
 type VoiceCallDemo = "off" | "sim_on" | "unavailable";
 type StoryId = "sons" | "mudanca" | "frustracao" | "social" | "medo" | "raiva" | "cansaco" | "dor";
@@ -142,6 +144,8 @@ type AppState = {
   breathState: BreathState;
   audioState: AudioState;
   audioVolume: number;
+  audioTrackId: AudioTrackId;
+  audioFavoriteIds: AudioTrackId[];
   mediaAvailable: boolean;
   sceneItems: SceneItem[];
   sceneUndoStack: SceneItem[][];
@@ -193,13 +197,15 @@ const initialState: AppState = {
   checkinOther: "",
   context: "",
   contextOther: "",
-  friendName: "Amigo",
+  friendName: "Calma",
   selfReport: "",
   favorites: [],
   personalStrategies: [],
   breathState: "idle",
   audioState: "idle",
-  audioVolume: 60,
+  audioVolume: 45,
+  audioTrackId: "chuva",
+  audioFavoriteIds: [],
   mediaAvailable: true,
   sceneItems: [],
   sceneUndoStack: [],
@@ -310,10 +316,21 @@ function createDemoSessionState(demoSession: DemoSession): AppState {
 
 const stateKey = "v41-participant-state";
 
+function loadPersistedAudio(): { audioFavoriteIds: AudioTrackId[]; audioVolume: number; audioTrackId: AudioTrackId } {
+  let stored: { audioFavoriteIds?: string[]; audioVolume?: number; audioTrackId?: string } = {};
+  try { stored = JSON.parse(localStorage.getItem("calmtea-audio-preferences") || "{}"); } catch { /* preferências opcionais */ }
+  const volume = Number(stored.audioVolume);
+  return {
+    audioFavoriteIds: (stored.audioFavoriteIds ?? []).filter((id): id is AudioTrackId => audioTracks.some((track) => track.id === id)),
+    audioVolume: Number.isFinite(volume) ? Math.min(100, Math.max(0, volume)) : 45,
+    audioTrackId: audioTracks.some((track) => track.id === stored.audioTrackId) ? stored.audioTrackId as AudioTrackId : "chuva",
+  };
+}
+
 function loadState() {
   try {
     const saved = sessionStorage.getItem(stateKey);
-    if (!saved) return initialState;
+    if (!saved) return { ...initialState, ...loadPersistedAudio() };
     // Sessões anteriores guardavam apenas uma tela de retorno; ela vira o primeiro item do histórico.
     const {
       returnScreen: legacyReturnScreen,
@@ -327,9 +344,13 @@ function loadState() {
       legacyReturnScreen && legacyReturnScreen !== savedState.currentScreen
         ? [legacyReturnScreen]
         : [];
+    const savedAudio = loadPersistedAudio();
     return {
       ...initialState,
       ...savedState,
+      audioFavoriteIds: savedAudio.audioFavoriteIds.length ? savedAudio.audioFavoriteIds : (savedState.audioFavoriteIds ?? []),
+      audioVolume: savedAudio.audioVolume,
+      audioTrackId: savedAudio.audioTrackId,
       history: Array.isArray(savedState.history) ? savedState.history : legacyHistory,
       sensoryResources: {
         ...initialState.sensoryResources,
@@ -578,6 +599,15 @@ function ParticipantApp() {
   useEffect(() => {
     sessionStorage.setItem(stateKey, JSON.stringify(state));
   }, [state]);
+  useEffect(() => {
+    try {
+      localStorage.setItem("calmtea-audio-preferences", JSON.stringify({
+        audioFavoriteIds: state.audioFavoriteIds,
+        audioVolume: state.audioVolume,
+        audioTrackId: state.audioTrackId,
+      }));
+    } catch { /* o uso do player não depende de armazenamento local */ }
+  }, [state.audioFavoriteIds, state.audioVolume, state.audioTrackId]);
 
   const update = (partial: Partial<AppState>) =>
     setState((previous) => ({ ...previous, ...partial }));
@@ -770,7 +800,7 @@ function ParticipantApp() {
         avatarName: draft.avatarName,
         avatarPalette: draft.avatarPalette,
         avatarAccessory: draft.avatarAccessory,
-        friendName: draft.friendName.trim() || "Amigo",
+        friendName: draft.friendName.trim() || "Calma",
         friendConfigured: Boolean(draft.friendName.trim()),
         friendStyle: draft.friendStyle,
         friendPalette: draft.friendPalette,
@@ -814,6 +844,34 @@ function ParticipantApp() {
     navigate("T12", {
       patch: { checkinChoice: "", checkinOther: "", context: "", contextOther: "" },
     });
+  };
+  /** Recomendações abrem a estratégia específica, sem desvio pelo catálogo. */
+  const openRecommendedStrategy = (title: string, category: string) => {
+    if (title === "Catálogo completo") {
+      setCatalogFilter("Todas");
+      navigate("T02");
+      return;
+    }
+    if (title === "Pausa silenciosa") return navigate("T05");
+    if (title === "Respiração voluntária") return navigate("T07", { patch: { breathState: "idle" } });
+    if (title === "Músicas e sons") return navigate("T08");
+    if (title === "Monte seu espaço") return navigate("T10");
+    if (title === "Apoio fora da tela") return navigate("T16");
+    if (title === "Orientação breve") return navigate("T11", { patch: { guideStep: 0 } });
+    if (title === "História contextual") {
+      const contextStories: Record<string, StoryId> = {
+        Barulho: "sons", Mudança: "mudanca", Frustração: "frustracao",
+        "Situação social": "social", Medo: "medo", Raiva: "raiva",
+        Cansaço: "cansaco", Dor: "dor",
+      };
+      return navigate("T15", {
+        patch: { storyId: contextStories[state.context] ?? "sons", storyScene: 0 },
+      });
+    }
+    // Estratégias pessoais precisam da descrição registrada pelo próprio participante.
+    if (category === "Pessoais") return navigate("T04");
+    setCatalogFilter(category);
+    navigate("T02");
   };
   // Cancelar ou fechar a consulta antes das sugestões descarta o rascunho do autorrelato.
   const leaveSupport = (announce: boolean) => {
@@ -869,10 +927,21 @@ function ParticipantApp() {
               onCatalog={() => navigate("T02")}
               onProfile={() => navigate("T34")}
               onFavorites={() => navigate("T03")}
+              onGuidance={() => navigate("T11", { patch: { guideStep: 0 } })}
               onCheckIn={() => {
                 setSupportFlow("record");
                 navigate("T12", { patch: { checkinChoice: "", checkinOther: "" } });
               }}
+              onToggleAcoustic={() => {
+                if (state.acousticMode === "sim_on") {
+                  update({ acousticMode: "off", acousticConsentDemo: false, permissionDemoState: "off" });
+                  message("Simulação acústica desativada.");
+                } else {
+                  update({ permissionVisible: true });
+                }
+              }}
+              onToggleInvites={() => update({ invitesEnabled: !state.invitesEnabled })}
+              onOpenPermission={() => update({ permissionVisible: true })}
             />
           )}
           {state.currentScreen === "T02" && (
@@ -944,18 +1013,29 @@ function ParticipantApp() {
           {state.currentScreen === "T08" && (
             <MusicLibraryScreen
               prefersSilence={state.prefSilence}
-              favoriteTracks={state.prefTracks}
+              favoriteIds={state.audioFavoriteIds}
+              preferredGenres={state.prefGenres}
               onBack={goBack}
               onClose={closeCurrent}
               backLabel={backDestinationLabel}
-              onOpenPlayer={(available) =>
+              onOpenPlayer={(audioTrackId) =>
                 navigate("T09", {
-                  patch: { mediaAvailable: available, audioState: available ? "idle" : "error" },
+                  patch: {
+                    audioTrackId: audioTrackId ?? "chuva",
+                    mediaAvailable: audioTrackId !== null,
+                    audioState: audioTrackId === null ? "error" : "idle",
+                    ...(audioTrackId !== null ? { prefSilence: false } : {}),
+                  },
                 })
               }
+              onFavorite={(id) => update({ audioFavoriteIds:
+                state.audioFavoriteIds.includes(id)
+                  ? state.audioFavoriteIds.filter((item) => item !== id)
+                  : [...state.audioFavoriteIds, id]
+              })}
               onSilent={() => {
                 const prefersSilence = !state.prefSilence;
-                update({ prefSilence: prefersSilence });
+                update({ prefSilence: prefersSilence, audioState: "idle" });
                 message(
                   prefersSilence
                     ? "Silêncio escolhido. Nenhuma mídia será iniciada."
@@ -971,6 +1051,11 @@ function ParticipantApp() {
               onClose={closeCurrent}
               onAudioState={(audioState) => update({ audioState })}
               onVolume={(audioVolume) => update({ audioVolume })}
+              onFavorite={(id) => update({ audioFavoriteIds:
+                state.audioFavoriteIds.includes(id)
+                  ? state.audioFavoriteIds.filter((item) => item !== id)
+                  : [...state.audioFavoriteIds, id]
+              })}
             />
           )}
           {state.currentScreen === "T10" && (
@@ -1121,6 +1206,7 @@ function ParticipantApp() {
               onBack={goBack}
               onClose={closeCurrent}
               onIgnore={closeCurrent}
+              onRecommendation={openRecommendedStrategy}
               onCatalog={(filter) => {
                 if (filter === "Histórias") {
                   navigate("T14");
@@ -1474,6 +1560,10 @@ function HomeScreen({
   onProfile,
   onFavorites,
   onCheckIn,
+  onGuidance,
+  onToggleAcoustic,
+  onToggleInvites,
+  onOpenPermission,
 }: {
   state: AppState;
   onBack: () => void;
@@ -1482,7 +1572,18 @@ function HomeScreen({
   onProfile: () => void;
   onFavorites: () => void;
   onCheckIn: () => void;
+  onGuidance: () => void;
+  onToggleAcoustic: () => void;
+  onToggleInvites: () => void;
+  onOpenPermission: () => void;
 }) {
+  const [orientationIndex, setOrientationIndex] = useState(0);
+  const orientationSteps = [
+    { title:"Escolha um recurso no seu tempo", text:"Você pode explorar as opções e sair de qualquer atividade quando quiser." },
+    { title:"Uma pausa é uma escolha", text:"Se desejar, procure um lugar confortável ou utilize uma atividade silenciosa." },
+    { title:"Apoio também pode acontecer fora da tela", text:"Um objeto conhecido ou uma conversa com alguém de confiança podem ser opções." },
+  ];
+  const orientation = orientationSteps[orientationIndex];
   return (
     <section className="T01-Home screen">
       <AppHeader title="Início" onBack={onBack} />
@@ -1496,6 +1597,7 @@ function HomeScreen({
           </p>
         </div>
         <div className="home-companion">
+          <EditorialIllustration kind="home" className="home-editorial" />
           <VirtualFriendAvatar
             className="home-companion__avatar"
             name={state.friendName}
@@ -1547,7 +1649,53 @@ function HomeScreen({
             </button>
           </div>
         </div>
-        <StatusLabel mode={state.acousticMode} />
+        <section className="home-orientations" aria-label="Orientações breves, navegação manual">
+          <div className="home-orientations__heading"><h2>Orientações breves</h2><span>{orientationIndex+1} de {orientationSteps.length}</span></div>
+          <div className="home-orientations__card"><EditorialIllustration kind="outside" compact />
+            <div><b>{orientation.title}</b><p>{orientation.text}</p></div></div>
+          <div className="home-orientations__buttons">
+            <button type="button" onClick={()=>setOrientationIndex(i=>Math.max(0,i-1))} disabled={orientationIndex===0}>Anterior</button>
+            <button type="button" onClick={()=>setOrientationIndex(i=>Math.min(orientationSteps.length-1,i+1))} disabled={orientationIndex===orientationSteps.length-1}>Próxima</button>
+            <button type="button" onClick={onGuidance}>Ver orientações completas</button>
+          </div>
+        </section>
+        <div className="home-demo-settings" aria-label="Configurações rápidas dos convites de apoio">
+          <h2>Convites de apoio durante a demonstração</h2>
+          <p>Você escolhe se deseja participar da simulação. Nenhum microfone é utilizado.</p>
+          <div className="home-demo-settings__row">
+            <div>
+              <b>Habilitar simulação acústica</b>
+              <small>Autoriza o recebimento de sinais simulados, após sua permissão.</small>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              className={`switch ${state.acousticMode === "sim_on" ? "switch--on" : ""}`}
+              aria-checked={state.acousticMode === "sim_on"}
+              aria-label="Habilitar simulação acústica"
+              onClick={onToggleAcoustic}
+            ><span /></button>
+          </div>
+          <div className="home-demo-settings__row">
+            <div>
+              <b>Receber convites de apoio</b>
+              <small>Você pode suspender os convites a qualquer momento.</small>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              className={`switch ${state.invitesEnabled ? "switch--on" : ""}`}
+              aria-checked={state.invitesEnabled}
+              aria-label="Receber convites de apoio"
+              onClick={onToggleInvites}
+            ><span /></button>
+          </div>
+          <button type="button" className="home-demo-settings__permission" onClick={onOpenPermission}>
+            {state.permissionDemoState === "granted-demo" ? "Permissão demonstrativa concedida — revisar" : "Configurar permissão demonstrativa"}
+            <Icon name="back" size={16} />
+          </button>
+          <StatusLabel mode={state.acousticMode} />
+        </div>
       </div>
     </section>
   );
@@ -1638,7 +1786,7 @@ const catalogItems: CatalogItem[] = [
   },
 ];
 const catalogIcons = {
-  Pausa: "sound",
+  Pausa: "leaf",
   Respiração: "wind",
   Música: "music",
   Jogos: "grid",
@@ -1710,8 +1858,13 @@ function CatalogScreen({
                     item.screen ? `Abrir ${item.title}` : `${item.title}: pendente nesta etapa`
                   }
                 >
-                  <span className="strategy-icon">
-                    <Icon name={catalogIcons[item.category as keyof typeof catalogIcons]} />
+                  <span className="strategy-icon strategy-icon--editorial">
+                    <EditorialIllustration compact kind={
+                      item.id === "pause" ? "pause" : item.id === "breath" ? "breath" :
+                      item.id === "music" ? "music" : item.id === "space" ? "space" :
+                      item.id === "pairs" || item.id === "path" ? "game" :
+                      item.id === "stories" ? "social" : item.id === "outside" ? "outside" : "home"
+                    } />
                   </span>
                   <span className="strategy-card__copy">
                     <b>{item.title}</b>
@@ -1752,8 +1905,8 @@ function CatalogScreen({
         )}
         <div className="catalog-footer">
           <p>Não encontrou o que procura?</p>
-          <Button variant="tertiary" onClick={onOpenSupport}>
-            Revisar opções de apoio
+          <Button variant="secondary" onClick={onOpenSupport}>
+            Quero ajuda para escolher
           </Button>
         </div>
       </div>
@@ -1769,7 +1922,7 @@ const favoriteDetails: Record<
     title: "Pausa silenciosa",
     description: "Sem som, sem tempo e sem exigência.",
     screen: "T05",
-    icon: "sound",
+    icon: "leaf",
   },
   breath: {
     title: "Respiração",
@@ -2095,9 +2248,7 @@ function PauseScreen({
           <h1>Pausa silenciosa</h1>
           <p className="lead">Um momento sem pressa e sem exigências.</p>
         </div>
-        <div className="pause-illustration" aria-hidden="true">
-          <Icon name="leaf" size={38} />
-        </div>
+        <EditorialIllustration kind="pause" />
         <div className="centered-copy">
           <h2>Você pode ficar aqui ou sair</h2>
           <p>Não há contagem de tempo. Nenhuma ação é necessária.</p>
@@ -2119,12 +2270,7 @@ function PauseScreen({
 
 function BreathingVisual() {
   return (
-    <div className="breathing-visual" aria-hidden="true">
-      <span />
-      <span />
-      <span />
-      <Icon name="wind" size={38} />
-    </div>
+    <div className="breathing-editorial"><EditorialIllustration kind="breath" /></div>
   );
 }
 
@@ -2155,7 +2301,7 @@ function BreathingIntroScreen({
         </div>
         <div className="information-note">
           <Icon name="info" size={18} />
-          Sem áudio por padrão. Sem cronômetro.
+          Sem áudio por padrão. Contador de tempo opcional na próxima tela.
         </div>
         <Button onClick={onStart}>Iniciar exercício</Button>
       </div>
@@ -2175,28 +2321,28 @@ function BreathingExerciseScreen({
   onToggle: () => void;
 }) {
   const active = state === "active";
+  const [timerVisible, setTimerVisible] = useState(false);
+  const [illustrationMoving, setIllustrationMoving] = useState(false);
+  const [seconds, setSeconds] = useState(0);
+  useEffect(() => {
+    if (!timerVisible || !active) return;
+    const timer = window.setInterval(() => setSeconds(value => value + 1), 1000);
+    return () => window.clearInterval(timer);
+  }, [timerVisible, active]);
+  const minutes = `${Math.floor(seconds / 60)}`.padStart(2, "0");
+  const remainder = `${seconds % 60}`.padStart(2, "0");
   return (
     <section className="T07-BreathingExercise screen">
       <AppHeader title="Respiração" onBack={onBack} onClose={onClose} />
       <div className="screen-content resource-content breathing-content">
-        <div>
-          <h1>Respiração</h1>
-          <p className="lead">Acompanhe apenas se desejar.</p>
-        </div>
-        <span className="state-chip">
-          {active ? "Exercício em andamento" : "Exercício pausado"}
-        </span>
-        <BreathingVisual />
-        <div className="centered-copy">
-          <h2>{active ? "Respire da forma mais confortável." : "Quando quiser, retome."}</h2>
-          <p>Você controla cada passo. A imagem permanece estática.</p>
-        </div>
-        <div className="resource-actions">
-          <Button onClick={onToggle}>{active ? "Pausar" : "Retomar"}</Button>
-          <Button variant="secondary" onClick={onClose}>
-            Sair do exercício
-          </Button>
-        </div>
+        <div><h1>Respiração</h1><p className="lead">Inspire e expire de maneira confortável, sem ritmo obrigatório.</p></div>
+        <span className="state-chip">{active ? "Exercício em andamento" : state === "idle" ? "Pronto para começar" : "Exercício pausado"}</span>
+        <div className={illustrationMoving ? "breathing-illustration--moving" : "breathing-illustration--still"}><BreathingVisual /></div>
+        <div className="centered-copy"><h2>{active ? "Respire da forma mais confortável." : state === "idle" ? "Comece quando quiser." : "Quando quiser, retome."}</h2><p>O desenho é estático e não indica um ritmo obrigatório.</p></div>
+        <label className="timer-toggle"><input type="checkbox" checked={illustrationMoving} onChange={event => setIllustrationMoving(event.target.checked)} /><span>Animar a ilustração (opcional, sem ritmo imposto)</span></label>
+        <label className="timer-toggle"><input type="checkbox" checked={timerVisible} onChange={event => setTimerVisible(event.target.checked)} /><span>Mostrar tempo decorrido (opcional)</span></label>
+        {timerVisible && <div className="breathing-time" role="timer" aria-label={`Tempo decorrido: ${minutes} minutos e ${remainder} segundos`}>{minutes}:{remainder}<small>Sem limite ou meta de tempo</small></div>}
+        <div className="resource-actions"><Button onClick={onToggle}>{active ? "Pausar" : state === "idle" ? "Iniciar respiração" : "Retomar"}</Button><Button variant="secondary" onClick={onClose}>Sair do exercício</Button></div>
       </div>
     </section>
   );
@@ -2204,92 +2350,104 @@ function BreathingExerciseScreen({
 
 function MusicLibraryScreen({
   prefersSilence,
-  favoriteTracks,
+  favoriteIds,
+  preferredGenres,
   onBack,
   onClose,
   backLabel,
   onOpenPlayer,
   onSilent,
+  onFavorite,
 }: {
   prefersSilence: boolean;
-  favoriteTracks: string[];
+  favoriteIds: AudioTrackId[];
+  preferredGenres: string[];
   onBack: () => void;
   onClose: () => void;
   backLabel: string;
-  onOpenPlayer: (available: boolean) => void;
+  onOpenPlayer: (trackId: AudioTrackId | null) => void;
   onSilent: () => void;
+  onFavorite: (id: AudioTrackId) => void;
 }) {
+  const [category, setCategory] = useState("Todas");
+  const [genre, setGenre] = useState("Todos os gêneros");
+  const genres = ["Todos os gêneros", ...Array.from(new Set(audioTracks.map((track) => track.genre)))];
+  const relevantTracks = audioTracks.filter((track) => {
+    if (category === "Favoritas" && !favoriteIds.includes(track.id)) return false;
+    if (category !== "Todas" && category !== "Favoritas" && track.category !== category) return false;
+    if (genre !== "Todos os gêneros" && track.genre !== genre) return false;
+    return true;
+  });
   return (
     <section className="T08-Music screen">
       <AppHeader title="Músicas e sons" onBack={onBack} onClose={onClose} />
-      <div className="screen-content resource-content">
+      <div className="screen-content resource-content audio-library">
         <div>
-          <h1>Músicas e sons</h1>
-          <p className="lead">Ouvir é uma escolha sua. Nada começa sozinho.</p>
+          <h1>Escolha o que ouvir</h1>
+          <p className="lead">Sons e músicas reais, sem reprodução automática. Você decide o estilo, o volume e quando parar.</p>
         </div>
-        <button
-          className={`music-option ${prefersSilence ? "music-option--selected" : ""}`}
-          onClick={onSilent}
-          aria-pressed={prefersSilence}
-        >
-          <span className="strategy-icon">
-            <Icon name="sound" />
-          </span>
-          <span>
-            <b>Prefiro silêncio</b>
-            <small>Continuar sem reprodução de áudio.</small>
-          </span>
-          <span>›</span>
+        <div className="audio-library-banner" aria-hidden="true">
+          <svg viewBox="0 0 350 125" width="100%" height="100%" preserveAspectRatio="xMidYMid slice">
+            <defs><linearGradient id="audioBanner" x1="0" x2="1"><stop stopColor="#d9eef0"/><stop offset="1" stopColor="#b1d8db"/></linearGradient></defs>
+            <rect width="350" height="125" rx="18" fill="url(#audioBanner)"/>
+            <path d="M0 83 Q35 61 70 83 T140 83 T210 83 T280 83 T350 83 L350 125H0Z" fill="#94c9d0" opacity=".7"/>
+            <path d="M0 102 Q45 77 90 102 T180 102 T270 102 T360 102" fill="none" stroke="#f8fcfc" strokeWidth="4" opacity=".9"/>
+            <circle cx="265" cy="47" r="27" fill="#f6faf5" opacity=".95"/>
+            <path d="M255 55V38l16-4v19" fill="none" stroke="#155e75" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"/>
+            <circle cx="252" cy="56" r="5" fill="#155e75"/><circle cx="268" cy="53" r="5" fill="#155e75"/>
+            <path d="M40 53q13-25 26 0t26 0t26 0" stroke="#155e75" strokeWidth="3" fill="none" strokeLinecap="round" opacity=".55"/>
+          </svg>
+        </div>
+        <button className={`music-option ${prefersSilence ? "music-option--selected" : ""}`} onClick={onSilent} aria-pressed={prefersSilence}>
+          <span className="strategy-icon"><Icon name="sound" /></span>
+          <span><b>Prefiro silêncio</b><small>Áudio é opcional. Não tocar nada por enquanto.</small></span>
+          <span aria-hidden="true">{prefersSilence ? "✓" : "›"}</span>
         </button>
-        {favoriteTracks.length > 0 && (
-          <div className="saved-music-preferences">
-            <h2 className="subheading">Faixas que você marcou</h2>
-            <p>{favoriteTracks.join(" · ")}</p>
-          </div>
-        )}
-        <h2 className="subheading">Biblioteca demonstrativa</h2>
-        <div className="simple-list">
-          <button className="music-option" onClick={() => onOpenPlayer(true)}>
-            <span className="strategy-icon">
-              <Icon name="music" />
-            </span>
-            <span>
-              <b>Som de chuva suave</b>
-              <small>Faixa ilustrativa · 3 min 20 s</small>
-            </span>
-            <span>›</span>
-          </button>
-          <button className="music-option" onClick={() => onOpenPlayer(true)}>
-            <span className="strategy-icon">
-              <Icon name="music" />
-            </span>
-            <span>
-              <b>Ambiente tranquilo</b>
-              <small>Faixa ilustrativa · 4 min 10 s</small>
-            </span>
-            <span>›</span>
-          </button>
-          <button className="music-option" onClick={() => onOpenPlayer(false)}>
-            <span className="strategy-icon">
-              <Icon name="info" />
-            </span>
-            <span>
-              <b>Som indisponível</b>
-              <small>Teste de falha recuperável.</small>
-            </span>
-            <span>›</span>
-          </button>
+        <div className="audio-filter-row" role="group" aria-label="Filtrar por tipo de áudio">
+          {["Todas", "Ambientes", "Músicas", "Favoritas"].map((item) => (
+            <button key={item} className={category === item ? "audio-chip audio-chip--active" : "audio-chip"} onClick={() => setCategory(item)} aria-pressed={category === item}>{item}</button>
+          ))}
         </div>
-        <div className="information-note">
-          <Icon name="info" size={18} />
-          Nenhuma faixa é executada ao abrir esta tela.
+        <label className="audio-genre-filter">
+          <span>Gênero ou tipo de som</span>
+          <select value={genre} onChange={(event) => setGenre(event.target.value)}>
+            {genres.map((item) => <option key={item} value={item}>{item}</option>)}
+          </select>
+        </label>
+        {!!preferredGenres.length && <p className="audio-preference-note">Seus gêneros escolhidos na personalização: {preferredGenres.join(" · ")}. Você pode ouvir qualquer gênero.</p>}
+        <div className="audio-track-list">
+          {relevantTracks.length ? relevantTracks.map((track) => {
+            const isFavorite = favoriteIds.includes(track.id);
+            return (
+              <div className="audio-track-card" key={track.id}>
+                <button className="audio-track-main" onClick={() => onOpenPlayer(track.id)} aria-label={`Selecionar ${track.title}`}>
+                  <span className={`audio-track-illustration audio-track-illustration--${track.id}`} aria-hidden="true"><Icon name={track.category === "Músicas" ? "music" : "sound"} /></span>
+                  <span className="audio-track-copy"><b>{track.title}</b><small>{track.genre} · {track.author}</small><small>{track.note}</small></span>
+                  <span className="audio-track-enter" aria-hidden="true">›</span>
+                </button>
+                <button className={`audio-favorite-button ${isFavorite ? "audio-favorite-button--saved" : ""}`} aria-label={`${isFavorite ? "Remover" : "Adicionar"} ${track.title} ${isFavorite ? "dos" : "aos"} favoritos`} aria-pressed={isFavorite} onClick={() => onFavorite(track.id)} title={isFavorite ? "Remover dos favoritos" : "Adicionar aos favoritos"}>
+                  <span aria-hidden="true">{isFavorite ? "♥" : "♡"}</span>
+                </button>
+              </div>
+            );
+          }) : <p className="audio-empty">Nenhuma faixa nesse filtro. Escolha outro gênero ou veja todas as faixas.</p>}
         </div>
-        <Button variant="secondary" onClick={onBack}>
-          {backLabel}
-        </Button>
+        <button className="music-option" onClick={() => onOpenPlayer(null)}>
+          <span className="strategy-icon"><Icon name="info" /></span>
+          <span><b>Simular áudio indisponível</b><small>Teste de falha recuperável, sem reproduzir nada.</small></span>
+          <span aria-hidden="true">›</span>
+        </button>
+        <p className="audio-credit">Arquivos instrumentais locais produzidos para este protótipo. Consulte <a href="/audio/LICENCAS_E_FONTES.md" target="_blank" rel="noopener noreferrer">créditos e licenças</a>.</p>
+        <Button variant="secondary" onClick={onBack}>{backLabel}</Button>
       </div>
     </section>
   );
+}
+
+function formatAudioTime(value: number) {
+  if (!Number.isFinite(value)) return "0:00";
+  const total = Math.floor(Math.max(0, value));
+  return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`;
 }
 
 function PlayerScreen({
@@ -2298,221 +2456,248 @@ function PlayerScreen({
   onClose,
   onAudioState,
   onVolume,
+  onFavorite,
 }: {
   state: AppState;
   onBack: () => void;
   onClose: () => void;
   onAudioState: (state: AudioState) => void;
   onVolume: (volume: number) => void;
+  onFavorite: (id: AudioTrackId) => void;
 }) {
-  const unavailable = !state.mediaAvailable;
-  const audioLabel = unavailable
-    ? "Áudio indisponível — continue sem som"
-    : state.audioState === "playing"
-      ? "Tocando — simulação sem áudio real"
-      : state.audioState === "paused"
-        ? "Pausado — reprodução simulada"
-        : "Parado — reprodução não iniciada";
+  const track = audioTrackById(state.audioTrackId);
+  const unavailable = !state.mediaAvailable || !state.soundEnabled;
+  const globallyMuted = !state.soundEnabled;
+  const favorite = state.audioFavoriteIds.includes(track.id);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (audioRef.current) audioRef.current.volume = state.audioVolume / 100;
+  }, [state.audioVolume]);
+  useEffect(() => {
+    // Ao trocar a fonte ou sair da tela, o elemento de áudio é desmontado e a reprodução cessa.
+    setCurrentTime(0); setDuration(0); setError("");
+  }, [track.id]);
+  const play = async () => {
+    if (!audioRef.current || unavailable) return;
+    setError("");
+    try {
+      await audioRef.current.play();
+      onAudioState("playing");
+    } catch {
+      setError("Não foi possível iniciar esta faixa. Verifique o navegador ou escolha outra música.");
+      onAudioState("error");
+    }
+  };
+  const pause = () => { audioRef.current?.pause(); onAudioState("paused"); };
+  const stop = () => {
+    if (audioRef.current) { audioRef.current.pause(); audioRef.current.currentTime = 0; }
+    setCurrentTime(0); onAudioState("idle");
+  };
+  const seek = (time: number) => {
+    if (audioRef.current && Number.isFinite(time)) audioRef.current.currentTime = time;
+    setCurrentTime(time);
+  };
   return (
     <section className="T09-Player screen">
-      <AppHeader title="Reprodutor" onBack={onBack} onClose={onClose} />
+      <AppHeader title="Reprodutor" onBack={() => { stop(); onBack(); }} onClose={() => { stop(); onClose(); }} />
       <div className="screen-content resource-content player-content">
-        <div>
-          <h1>Reprodutor</h1>
-          <p className="lead">Controles de reprodução demonstrativos.</p>
+        <div><h1>{unavailable ? (globallyMuted ? "Som desativado" : "Som indisponível") : track.title}</h1><p className="lead">{unavailable ? (globallyMuted ? "O som está desligado em Ajustes. Você pode reativá-lo quando quiser." : "Você pode continuar sem som ou escolher outra faixa.") : `${track.genre} · ${track.note}`}</p></div>
+        <div className={`player-art player-art--${track.id}`} aria-hidden="true">
+          <svg viewBox="0 0 340 190" width="100%" height="100%" preserveAspectRatio="xMidYMid slice">
+            <defs><linearGradient id="playerGradient" x1="0" x2="1" y1="0" y2="1"><stop stopColor="#e4f3f5"/><stop offset="1" stopColor="#8ec5cc"/></linearGradient></defs>
+            <rect width="340" height="190" rx="18" fill="url(#playerGradient)"/>
+            <circle cx="265" cy="65" r="54" fill="#f3faf8" opacity=".68"/>
+            <path d="M10 110C80 50 115 150 176 103S275 65 340 102V190H0V140Z" fill="#87bec6"/>
+            <path d="M0 143Q45 110 90 143T180 143T270 143T360 143" fill="none" stroke="white" strokeWidth="4" opacity=".76"/>
+            <path d="M52 78q20-45 40 0t40 0" fill="none" stroke="#155e75" strokeWidth="5" strokeLinecap="round" opacity=".55"/>
+            <path d="M247 73V48l27-6v27" fill="none" stroke="#155e75" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round"/>
+            <circle cx="241" cy="74" r="9" fill="#155e75"/><circle cx="268" cy="69" r="9" fill="#155e75"/>
+          </svg>
         </div>
-        <div className="player-art" aria-hidden="true">
-          <span>
-            <Icon name="music" size={54} />
-          </span>
+        <div className="player-track-head">
+          <div><b>{unavailable ? "Reprodução indisponível" : track.title}</b><small>{unavailable ? "Sem áudio" : track.author}</small></div>
+          {!unavailable && <button className="audio-favorite-button" onClick={() => onFavorite(track.id)} aria-pressed={favorite} aria-label={favorite ? "Remover dos favoritos" : "Adicionar aos favoritos"} title="Favoritar">{favorite ? "♥" : "♡"}</button>}
         </div>
-        <div className="centered-copy">
-          <h2>Som de chuva suave</h2>
-          <p>Faixa de demonstração · 3 min 20 s</p>
-        </div>
-        <div className={`audio-label ${unavailable ? "audio-label--error" : ""}`}>
-          <Icon name="info" size={18} />
-          {audioLabel}
-        </div>
+        {unavailable || error ? <div className="audio-label audio-label--error" role="alert"><Icon name="info" size={18}/>{error || (globallyMuted ? "Som desligado nas preferências do aplicativo." : "Áudio indisponível nesta demonstração.")}</div>
+          : <p className="audio-label" role="status"><Icon name="info" size={18}/>{state.audioState === "playing" ? "Reproduzindo áudio real" : state.audioState === "paused" ? "Pausado" : "Pronto para ouvir — toque em Reproduzir"}</p>}
+        {!unavailable && <audio ref={audioRef} src={audioPath(track)} preload="metadata"
+          onLoadedMetadata={(event) => setDuration(event.currentTarget.duration)}
+          onTimeUpdate={(event) => setCurrentTime(event.currentTarget.currentTime)}
+          onEnded={() => { onAudioState("idle"); setCurrentTime(0); }}
+          onError={() => { onAudioState("error"); setError("O arquivo não pôde ser carregado. Escolha outra faixa."); }} />}
+        {!unavailable && <div className="audio-progress">
+          <div className="audio-progress-label"><span>Progresso</span><span>{formatAudioTime(currentTime)} / {formatAudioTime(duration)}</span></div>
+          <input type="range" min={0} max={duration > 0 ? duration : 100} step={1} value={Math.min(currentTime, duration > 0 ? duration : 100)} onChange={(event) => seek(Number(event.target.value))} disabled={!duration} aria-label="Posição na faixa" />
+        </div>}
         <div className="player-controls">
-          <Button onClick={() => !unavailable && onAudioState("playing")} disabled={unavailable}>
-            Reproduzir
-          </Button>
-          <Button
-            variant="secondary"
-            onClick={() => !unavailable && onAudioState("paused")}
-            disabled={unavailable}
-          >
-            Pausar
-          </Button>
-          <Button variant="secondary" onClick={() => onAudioState("idle")}>
-            Parar
-          </Button>
+          <Button onClick={() => void play()} disabled={unavailable}>Reproduzir</Button>
+          <Button variant="secondary" onClick={pause} disabled={unavailable || state.audioState !== "playing"}>Pausar</Button>
+          <Button variant="secondary" onClick={stop}>Parar</Button>
         </div>
-        <label className="volume-control">
-          <span>
-            <b>Volume</b>
-            <small>0% — 100%</small>
-          </span>
-          <input
-            type="range"
-            min="0"
-            max="100"
-            value={state.audioVolume}
-            disabled={unavailable}
-            onChange={(event) => onVolume(Number(event.target.value))}
-          />
-        </label>
-        <Button variant="tertiary" onClick={onBack}>
-          Voltar à seleção
-        </Button>
+        {!unavailable && <label className="volume-control">
+          <span><b>Volume</b><small>{state.audioVolume}%</small></span>
+          <input type="range" min="0" max="100" step="5" value={state.audioVolume} onChange={(event) => onVolume(Number(event.target.value))} aria-label="Volume do áudio"/>
+          <div className="volume-presets" aria-label="Níveis rápidos de volume">{[0,25,50,75,100].map((level) => <button key={level} className={state.audioVolume === level ? "audio-chip audio-chip--active" : "audio-chip"} onClick={() => onVolume(level)} aria-pressed={state.audioVolume === level}>{level}%</button>)}</div>
+        </label>}
+        <Button variant="secondary" onClick={() => { stop(); onBack(); }}>Trocar som ou música</Button>
       </div>
     </section>
   );
 }
 
 function SpaceGameScreen({
-  items,
-  selectedId,
-  canUndo,
-  onBack,
-  onClose,
-  onAdd,
-  onMove,
-  onStartMove,
-  onSelect,
-  onRemove,
-  onUndo,
-  onClear,
+  items, selectedId, canUndo, onBack, onClose, onAdd, onMove,
+  onStartMove, onSelect, onRemove, onUndo, onClear,
 }: {
-  items: SceneItem[];
-  selectedId: string | null;
-  canUndo: boolean;
-  onBack: () => void;
-  onClose: () => void;
-  onAdd: (kind: SceneKind) => void;
-  onMove: (id: string, x: number, y: number) => void;
-  onStartMove: () => void;
-  onSelect: (id: string) => void;
-  onRemove: () => void;
-  onUndo: () => void;
-  onClear: () => void;
+  items: SceneItem[]; selectedId: string | null; canUndo: boolean;
+  onBack: () => void; onClose: () => void; onAdd: (kind: SceneKind) => void;
+  onMove: (id: string, x: number, y: number) => void; onStartMove: () => void;
+  onSelect: (id: string) => void; onRemove: () => void; onUndo: () => void; onClear: () => void;
 }) {
   const [confirmClear, setConfirmClear] = useState(false);
+  const [drawing, setDrawing] = useState(false);
+  const [erasing, setErasing] = useState(false);
+  const [color, setColor] = useState("#155e75");
+  const [strokes, setStrokes] = useState<Array<{color: string; points: Array<[number,number]>}>>([]);
+  const [currentStroke, setCurrentStroke] = useState<Array<[number,number]>>([]);
   const canvasRef = useRef<HTMLDivElement>(null);
+  const drawingRef = useRef(false);
+  const drawnPointsRef = useRef<Array<[number,number]>>([]);
   const dragRef = useRef<{ id: string; offsetX: number; offsetY: number } | null>(null);
+  const palette: Array<{kind:SceneKind; label:string}> = [
+    {kind:"planta",label:"Planta"},{kind:"mesa",label:"Mesa"},{kind:"luz",label:"Luz"},
+    {kind:"almofada",label:"Almofada"},{kind:"poltrona",label:"Poltrona"},
+    {kind:"livro",label:"Livro"},{kind:"tapete",label:"Tapete"},
+    {kind:"quadro",label:"Quadro"},{kind:"luminaria",label:"Luminária"}
+  ];
   const startDrag = (event: React.PointerEvent<HTMLButtonElement>, item: SceneItem) => {
-    const rect = canvasRef.current?.getBoundingClientRect();
-    if (!rect) return;
-    dragRef.current = {
-      id: item.id,
-      offsetX: event.clientX - rect.left - item.x,
-      offsetY: event.clientY - rect.top - item.y,
-    };
-    onStartMove();
-    onSelect(item.id);
-    event.currentTarget.setPointerCapture(event.pointerId);
+    if (drawing || erasing) return;
+    const rect = canvasRef.current?.getBoundingClientRect(); if (!rect) return;
+    dragRef.current = {id:item.id, offsetX:event.clientX-rect.left-item.x,offsetY:event.clientY-rect.top-item.y};
+    onStartMove(); onSelect(item.id); event.currentTarget.setPointerCapture(event.pointerId);
   };
   const moveDrag = (event: React.PointerEvent<HTMLDivElement>) => {
-    const drag = dragRef.current;
-    const rect = canvasRef.current?.getBoundingClientRect();
-    if (!drag || !rect) return;
-    onMove(
-      drag.id,
-      Math.max(0, Math.min(rect.width - 56, event.clientX - rect.left - drag.offsetX)),
-      Math.max(0, Math.min(rect.height - 56, event.clientY - rect.top - drag.offsetY)),
-    );
+    const drag=dragRef.current; const rect=canvasRef.current?.getBoundingClientRect();
+    if(!drag||!rect||drawing||erasing)return;
+    onMove(drag.id,Math.max(0,Math.min(rect.width-56,event.clientX-rect.left-drag.offsetX)),Math.max(0,Math.min(rect.height-56,event.clientY-rect.top-drag.offsetY)));
   };
+  const toPoint=(event:React.PointerEvent<SVGSVGElement>):[number,number]=>{
+    const rect=event.currentTarget.getBoundingClientRect();
+    return [Math.max(0,Math.min(1000,((event.clientX-rect.left)/rect.width)*1000)),
+      Math.max(0,Math.min(620,((event.clientY-rect.top)/rect.height)*620))];
+  };
+  const beginDraw=(event:React.PointerEvent<SVGSVGElement>)=>{
+    if(erasing){
+      const [px,py]=toPoint(event);
+      setStrokes(previous=>{
+        let nearest=-1;let distance=Infinity;
+        previous.forEach((stroke,index)=>stroke.points.forEach(([x,y])=>{
+          const d=Math.hypot(x-px,y-py);if(d<distance){distance=d;nearest=index;}
+        }));
+        return nearest>=0 && distance<48 ? previous.filter((_,index)=>index!==nearest) : previous;
+      });
+      return;
+    }
+    if(!drawing)return;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    drawingRef.current=true;drawnPointsRef.current=[toPoint(event)];setCurrentStroke(drawnPointsRef.current);
+  };
+  const moveDraw=(event:React.PointerEvent<SVGSVGElement>)=>{
+    if(!drawingRef.current)return;
+    drawnPointsRef.current=[...drawnPointsRef.current,toPoint(event)];
+    setCurrentStroke(drawnPointsRef.current);
+  };
+  const endDraw=()=>{
+    if(!drawingRef.current)return;
+    drawingRef.current=false;
+    const points=drawnPointsRef.current;
+    if(points.length)setStrokes(prev=>[...prev,{color,points}]);
+    drawnPointsRef.current=[];setCurrentStroke([]);
+  };
+  const asPolyline=(points:Array<[number,number]>)=>points.map(([x,y])=>`${x},${y}`).join(" ");
   return (
     <section className="T10-SpaceGame screen">
-      <AppHeader title="Monte seu espaço" onBack={onBack} onClose={onClose} />
+      <AppHeader title="Monte seu espaço" onBack={onBack} onClose={onClose}/>
       <div className="screen-content resource-content game-content">
-        <div>
-          <h1>Monte seu espaço</h1>
-          <p className="lead">Uma atividade livre, sem pontuação.</p>
+        <div><h1>Monte seu espaço</h1><p className="lead">Combine objetos e desenhe livremente. Não há pontuação.</p></div>
+        <div className="scene-canvas" ref={canvasRef} onPointerMove={moveDrag}
+          onPointerUp={()=>{dragRef.current=null;}} onPointerCancel={()=>{dragRef.current=null;}}>
+          {items.length===0 && strokes.length===0 && !currentStroke.length && <p>Adicione objetos ou escolha Desenhar para começar.</p>}
+          {items.map(item=><button key={item.id}
+            className={`C29-SceneObject scene-object scene-object--${item.kind} ${selectedId===item.id?"scene-object--selected":""}`}
+            style={{left:item.x,top:item.y}} onClick={()=>!drawing&&!erasing&&onSelect(item.id)}
+            onPointerDown={event=>startDrag(event,item)}
+            aria-label={`${item.kind}, ${selectedId===item.id?"selecionado":"selecionar"}`}/>) }
+          <svg className={`scene-draw-layer ${drawing||erasing?"scene-draw-layer--active":""}`}
+            viewBox="0 0 1000 620" preserveAspectRatio="none"
+            onPointerDown={beginDraw} onPointerMove={moveDraw} onPointerUp={endDraw} onPointerCancel={endDraw}
+            aria-label="Área de desenho livre" role="img">
+            {strokes.map((stroke,index)=><polyline key={index} fill="none" stroke={stroke.color} strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" points={asPolyline(stroke.points)}/>) }
+            {currentStroke.length>0 && <polyline fill="none" stroke={color} strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" points={asPolyline(currentStroke)}/>}
+          </svg>
         </div>
-        <div
-          className="scene-canvas"
-          ref={canvasRef}
-          onPointerMove={moveDrag}
-          onPointerUp={() => {
-            dragRef.current = null;
-          }}
-          onPointerCancel={() => {
-            dragRef.current = null;
-          }}
-        >
-          {items.length === 0 && <p>Adicione elementos para organizar um espaço.</p>}
-          {items.map((item) => (
-            <button
-              key={item.id}
-              className={`C29-SceneObject scene-object scene-object--${item.kind} ${selectedId === item.id ? "scene-object--selected" : ""}`}
-              style={{ left: item.x, top: item.y }}
-              onClick={() => onSelect(item.id)}
-              onPointerDown={(event) => startDrag(event, item)}
-              aria-label={`${item.kind}; ${selectedId === item.id ? "selecionado" : "selecionar"}`}
-            />
-          ))}
+        <div className="draw-controls">
+          <button type="button" className={drawing?"draw-mode draw-mode--active":"draw-mode"} onClick={()=>{setDrawing(prev=>!prev);setErasing(false);}} aria-pressed={drawing}>
+            {drawing?"✓ Lápis ativo":"✎ Lápis"}
+          </button>
+          <button type="button" className={erasing?"draw-mode draw-mode--active":"draw-mode"} onClick={()=>{setErasing(prev=>!prev);setDrawing(false);}} aria-pressed={erasing}>Borracha</button>
+          <div className="draw-colors" aria-label="Cor do lápis">
+            {[["#155e75","Azul"],["#467565","Verde"],["#806d54","Marrom"],["#9d2f38","Vermelho"]].map(([value,label])=><button key={value} type="button" style={{background:value}} className={color===value?"draw-color draw-color--selected":"draw-color"} onClick={()=>{setColor(value);setDrawing(true);setErasing(false);}} aria-label={`Lápis ${label}`} aria-pressed={color===value}/>) }
+          </div>
+          <button type="button" className="draw-undo" onClick={()=>setStrokes(prev=>prev.slice(0,-1))} disabled={!strokes.length}>Desfazer traço</button>
         </div>
-        <div className="scene-heading">
-          <h2>Escolha elementos</h2>
-          <span>Arraste ou selecione</span>
-        </div>
+        <div className="scene-heading"><h2>Escolha elementos</h2><span>Toque para adicionar · Arraste para mover</span></div>
         <div className="scene-palette">
-          {(["planta", "mesa", "luz", "almofada"] as SceneKind[]).map((kind) => (
-            <button key={kind} onClick={() => onAdd(kind)}>
-              <span className={`palette-shape palette-shape--${kind}`} />
-              {kind[0].toUpperCase() + kind.slice(1)}
-            </button>
-          ))}
+          {palette.map(({kind,label})=><button key={kind} type="button" onClick={()=>{setDrawing(false);setErasing(false);onAdd(kind);}}>
+            <span className={`palette-shape palette-shape--${kind}`}/>{label}
+          </button>)}
         </div>
         <div className="game-actions">
-          <Button variant="secondary" onClick={onUndo} disabled={!canUndo}>
-            Desfazer
-          </Button>
-          <Button variant="secondary" onClick={onRemove} disabled={!selectedId}>
-            Remover
-          </Button>
-          <Button
-            variant="secondary"
-            onClick={() => setConfirmClear(true)}
-            disabled={items.length === 0}
-          >
-            Limpar
-          </Button>
+          <Button variant="secondary" onClick={onUndo} disabled={!canUndo}>Desfazer objeto</Button>
+          <Button variant="secondary" onClick={onRemove} disabled={!selectedId}>Remover objeto</Button>
+          <Button variant="secondary" onClick={()=>setConfirmClear(true)} disabled={items.length===0&&strokes.length===0}>Limpar espaço</Button>
           <Button onClick={onClose}>Sair do jogo</Button>
         </div>
-        <div className="information-note">
-          <Icon name="info" size={18} />
-          Limpar exige confirmação. Não existe vitória, erro ou limite de tempo.
-        </div>
+        <div className="information-note"><Icon name="info" size={18}/>Limpar exige confirmação. Use Borracha para apagar um traço tocando nele. Desenho e objetos são independentes; não há tempo ou pontuação.</div>
       </div>
-      {confirmClear && (
-        <ConfirmationDialog
-          title="Limpar o espaço?"
-          description="Os elementos adicionados serão removidos desta sessão. Você pode cancelar esta ação."
-          confirmLabel="Limpar espaço"
-          onConfirm={() => {
-            onClear();
-            setConfirmClear(false);
-          }}
-          onCancel={() => setConfirmClear(false)}
-        />
-      )}
+      {confirmClear && <ConfirmationDialog title="Limpar o espaço?"
+        description="Os objetos e desenhos serão removidos desta atividade. Você pode cancelar."
+        confirmLabel="Limpar espaço" onConfirm={()=>{onClear();setStrokes([]);setCurrentStroke([]);setConfirmClear(false);}}
+        onCancel={()=>setConfirmClear(false)}/>}
     </section>
   );
 }
 
 const matchingCards = [
-  { id: "circle-a", pair: "circle", label: "Círculo", shape: "circle" },
-  { id: "diamond-a", pair: "diamond", label: "Losango", shape: "diamond" },
-  { id: "triangle-a", pair: "triangle", label: "Triângulo", shape: "triangle" },
-  { id: "square-a", pair: "square", label: "Quadrado", shape: "square" },
-  { id: "triangle-b", pair: "triangle", label: "Triângulo", shape: "triangle" },
-  { id: "square-b", pair: "square", label: "Quadrado", shape: "square" },
-  { id: "circle-b", pair: "circle", label: "Círculo", shape: "circle" },
-  { id: "diamond-b", pair: "diamond", label: "Losango", shape: "diamond" },
+  {id:"circle-a",pair:"circle",label:"Círculo",shape:"circle"},
+  {id:"diamond-a",pair:"diamond",label:"Losango",shape:"diamond"},
+  {id:"triangle-a",pair:"triangle",label:"Triângulo",shape:"triangle"},
+  {id:"square-a",pair:"square",label:"Quadrado",shape:"square"},
+  {id:"triangle-b",pair:"triangle",label:"Triângulo",shape:"triangle"},
+  {id:"square-b",pair:"square",label:"Quadrado",shape:"square"},
+  {id:"circle-b",pair:"circle",label:"Círculo",shape:"circle"},
+  {id:"diamond-b",pair:"diamond",label:"Losango",shape:"diamond"},
+  {id:"oval-a",pair:"oval",label:"Oval",shape:"oval"},
+  {id:"oval-b",pair:"oval",label:"Oval",shape:"oval"},
+  {id:"star-a",pair:"star",label:"Estrela",shape:"star"},
+  {id:"star-b",pair:"star",label:"Estrela",shape:"star"},
+  {id:"hex-a",pair:"hex",label:"Hexágono",shape:"hex"},
+  {id:"hex-b",pair:"hex",label:"Hexágono",shape:"hex"},
+  {id:"bar-a",pair:"bar",label:"Barra",shape:"bar"},
+  {id:"bar-b",pair:"bar",label:"Barra",shape:"bar"},
 ] as const;
+
+function shuffledMatchingCards(pairCount: 4 | 6 | 8) {
+  const pairs=["circle","diamond","triangle","square","oval","star","hex","bar"].slice(0,pairCount);
+  const cards=matchingCards.filter(card=>pairs.includes(card.pair));
+  const deck=[...cards];
+  for(let i=deck.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[deck[i],deck[j]]=[deck[j],deck[i]];}
+  return deck;
+}
 
 function MatchingGameScreen({
   selected,
@@ -2531,6 +2716,9 @@ function MatchingGameScreen({
   onBack: () => void;
   onClose: () => void;
 }) {
+  const [difficulty, setDifficulty] = useState<4 | 6 | 8>(4);
+  const [deck, setDeck] = useState(() => shuffledMatchingCards(4));
+  const startNewRound=(count:4|6|8)=>{setDifficulty(count); setDeck(shuffledMatchingCards(count)); onReset();};
   return (
     <section className="T22-MatchingGame screen">
       <AppHeader title="Combine os pares" onBack={onBack} onClose={onClose} />
@@ -2540,8 +2728,13 @@ function MatchingGameScreen({
           <p className="lead">Escolha duas figuras que pareçam iguais.</p>
         </div>
         <div className="matching-note">Sem limite de tentativas, tempo ou pontuação.</div>
+        <div className="game-difficulty" role="group" aria-label="Escolha a dificuldade, sem progressão obrigatória">
+          {([4,6,8] as const).map(count=><button key={count} type="button"
+            className={difficulty===count?"difficulty-chip difficulty-chip--selected":"difficulty-chip"}
+            aria-pressed={difficulty===count} onClick={()=>startNewRound(count)}>{count} pares</button>)}
+        </div>
         <div className="matching-grid">
-          {matchingCards.map((card) => {
+          {deck.map((card) => {
             const isMatched = matched.includes(card.id);
             const isSelected = selected.includes(card.id);
             return (
@@ -2558,6 +2751,7 @@ function MatchingGameScreen({
             );
           })}
         </div>
+        {matched.length === deck.length && <div className="match-feedback match-feedback--success" role="status">Todos os pares foram encontrados. Você pode embaralhar novamente ou sair.</div>}
         {feedback && (
           <div
             className={`match-feedback ${feedback.startsWith("Par") ? "match-feedback--success" : ""}`}
@@ -2567,8 +2761,8 @@ function MatchingGameScreen({
           </div>
         )}
         <div className="two-actions">
-          <Button variant="secondary" onClick={onReset}>
-            Reiniciar
+          <Button variant="secondary" onClick={()=>startNewRound(difficulty)}>
+            Embaralhar e recomeçar
           </Button>
           <Button onClick={onClose}>Sair do jogo</Button>
         </div>
@@ -2578,62 +2772,49 @@ function MatchingGameScreen({
 }
 
 function PathGameScreen({
-  step,
-  onPoint,
-  onUndo,
-  onReset,
-  onBack,
-  onClose,
+  step, onPoint, onUndo, onReset, onBack, onClose,
 }: {
-  step: number;
-  onPoint: (point: number) => void;
-  onUndo: () => void;
-  onReset: () => void;
-  onBack: () => void;
-  onClose: () => void;
+  step: number; onPoint: (point: number) => void; onUndo: () => void;
+  onReset: () => void; onBack: () => void; onClose: () => void;
 }) {
-  const stateLabel =
-    step >= 3 ? "Caminho completo" : step ? "Caminho em construção" : "Escolha o primeiro ponto";
+  const paths: Array<Array<{x:number;y:number}>> = [
+    [{x:45,y:263},{x:116,y:221},{x:228,y:147},{x:275,y:67}],
+    [{x:42,y:255},{x:100,y:170},{x:205,y:216},{x:283,y:80}],
+    [{x:59,y:262},{x:170,y:224},{x:117,y:112},{x:277,y:65}],
+    [{x:40,y:260},{x:137,y:185},{x:232,y:227},{x:283,y:79}],
+  ];
+  const [layoutIndex,setLayoutIndex]=useState(()=>Math.floor(Math.random()*paths.length));
+  const positions=paths[layoutIndex];
+  const stateLabel=step>=3?"Caminho completo":step?"Caminho em construção":"Toque no ponto 1 para começar";
+  const restart=()=>{setLayoutIndex(index=>(index+1+Math.floor(Math.random()*(paths.length-1)))%paths.length);onReset();};
   return (
     <section className="T23-PathGame screen">
       <AppHeader title="Desenhe o caminho" onBack={onBack} onClose={onClose} />
       <div className="screen-content resource-content game-content">
-        <div>
-          <h1>Desenhe o caminho</h1>
-          <p className="lead">Ligue os pontos, no seu ritmo.</p>
-        </div>
-        <div className="path-canvas">
-          <span className="path-label">{stateLabel}</span>
-          <span className={`path-line path-line--one ${step >= 1 ? "path-line--active" : ""}`} />
-          <span className={`path-line path-line--two ${step >= 2 ? "path-line--active" : ""}`} />
-          <span className={`path-line path-line--three ${step >= 3 ? "path-line--active" : ""}`} />
-          {[1, 2, 3].map((point) => (
-            <button
-              key={point}
-              className={`path-point path-point--${point} ${step >= point ? "path-point--active" : ""}`}
-              onClick={() => onPoint(point)}
-              aria-label={`Ponto ${point}${step >= point ? ", conectado" : ", conectar"}`}
-            />
+        <div><h1>Desenhe o caminho</h1><p className="lead">Conecte os pontos numerados. Você pode voltar ou recomeçar.</p></div>
+        <div className="path-canvas path-canvas--svg">
+          <span className="path-label" role="status">{stateLabel}</span>
+          <svg className="path-svg" viewBox="0 0 320 320" preserveAspectRatio="none" aria-hidden="true">
+            <path d="M0 277Q70 240 115 281T320 253" stroke="#bdd5d4" strokeWidth="2" fill="none" />
+            {positions.slice(1).map((point,index)=><line key={index}
+              x1={positions[index].x} y1={positions[index].y} x2={point.x} y2={point.y}
+              stroke={step>=index+1?"#155e75":"#afc7cd"} strokeWidth={step>=index+1?"6":"2"}
+              strokeDasharray={step>=index+1?undefined:"5 8"} strokeLinecap="round"/>)}
+          </svg>
+          {positions.map((point,index)=>index===0?(
+            <span key="start" className="path-start-label" style={{left:`${point.x/320*100}%`,top:`${point.y/320*100}%`}} aria-label="Início do caminho">Início</span>
+          ):(
+            <button type="button" key={index} className={`path-point path-point--svg ${step>=index?"path-point--active":""}`}
+              style={{left:`${point.x/320*100}%`,top:`${point.y/320*100}%`}}
+              onClick={()=>onPoint(index)} aria-label={`Conectar ponto ${index}`} aria-pressed={step>=index}>
+              {index}
+            </button>
           ))}
-          <button
-            className={`path-point path-point--start ${step >= 1 ? "path-point--active" : ""}`}
-            onClick={() => onPoint(1)}
-            aria-label="Início do caminho"
-          />
         </div>
-        <div className="two-actions">
-          <Button variant="secondary" onClick={onUndo} disabled={step === 0}>
-            Desfazer
-          </Button>
-          <Button variant="secondary" onClick={onReset}>
-            Reiniciar
-          </Button>
-        </div>
+        <div className="two-actions"><Button variant="secondary" onClick={onUndo} disabled={step===0}>Desfazer</Button>
+          <Button variant="secondary" onClick={restart}>Novo percurso</Button></div>
         <Button onClick={onClose}>Sair do jogo</Button>
-        <div className="information-note">
-          <Icon name="info" size={18} />
-          Você pode interromper ou recomeçar sem perder pontos — não há pontos.
-        </div>
+        <div className="information-note"><Icon name="info" size={18}/>As linhas acompanham os pontos em qualquer largura de tela. Sem tempo, metas ou punições.</div>
       </div>
     </section>
   );
@@ -2726,153 +2907,82 @@ type StoryData = {
   summary: string;
   tag: string;
   hasFriend: boolean;
+  art: IllustrationKind;
   scenes: Array<{ heading: string; text: string }>;
 };
 
+// Texto fechado (V43 / P11-R3). Não substituir por geração automática ou resumo.
 const storyData: Record<StoryId, StoryData> = {
   sons: {
-    title: "Muitos sons ao redor",
-    summary: "Quando um lugar tem muitos sons",
-    tag: "BARULHO E ESTÍMULOS",
-    hasFriend: false,
+    title: "Muitos sons ao redor", summary: "Quando um lugar tem muitos sons",
+    tag: "BARULHO E ESTÍMULOS", hasFriend: false, art: "sounds",
     scenes: [
-      {
-        heading: "Há muitos sons ao redor.",
-        text: "Eu posso perceber que quero diminuir os estímulos.",
-      },
-      {
-        heading: "Posso escolher uma pausa.",
-        text: "Posso ir para um lugar mais tranquilo ou escolher ficar em silêncio.",
-      },
-      {
-        heading: "Posso escolher o que fazer em seguida.",
-        text: "Posso voltar quando fizer sentido para mim.",
-      },
+      { heading: "Em alguns ambientes, vários sons podem acontecer ao mesmo tempo.", text: "O mesmo conjunto de sons pode ser confortável para algumas pessoas e desconfortável para outras." },
+      { heading: "Em determinados lugares, há espaços com menos ruído.", text: "Fones ou abafadores, quando disponíveis e confortáveis, podem reduzir parte do som." },
+      { heading: "Se eu desejar, posso procurar uma pausa ou um lugar menos barulhento.", text: "Eu posso decidir se quero retornar à atividade ou continuar a pausa." },
     ],
   },
   mudanca: {
-    title: "Quando o plano muda",
-    summary: "Quando o plano do dia muda",
-    tag: "MUDANÇA INESPERADA",
-    hasFriend: true,
+    title: "Quando o plano muda", summary: "Quando o plano do dia muda",
+    tag: "MUDANÇA INESPERADA", hasFriend: true, art: "change",
     scenes: [
-      { heading: "Um plano pode mudar.", text: "Nem sempre as atividades seguem o plano inicial." },
-      {
-        heading: "Posso conhecer as novas opções.",
-        text: "Posso pedir que expliquem o que mudou e escolher o próximo passo.",
-      },
-      {
-        heading: "Posso fazer uma escolha.",
-        text: "Uma pausa ou uma orientação breve continuam disponíveis.",
-      },
+      { heading: "Às vezes, uma atividade prevista é alterada.", text: "Nem sempre sei antecipadamente por que o plano mudou." },
+      { heading: "Uma mudança pode acontecer por causa do horário, do local ou de outra necessidade.", text: "Uma explicação pode esclarecer o que permanece igual e o que será diferente." },
+      { heading: "Se eu quiser, posso pedir que me expliquem as opções disponíveis.", text: "Posso fazer uma pausa antes de decidir o que fazer em seguida." },
     ],
   },
   frustracao: {
-    title: "Quando algo não dá certo",
-    summary: "Frustração em jogo",
-    tag: "FRUSTRAÇÃO",
-    hasFriend: false,
+    title: "Quando algo não dá certo", summary: "Frustração em jogo",
+    tag: "FRUSTRAÇÃO", hasFriend: false, art: "game",
     scenes: [
-      {
-        heading: "Um jogo pode terminar diferente do esperado.",
-        text: "Isso é uma situação que posso reconhecer sem me julgar.",
-      },
-      { heading: "Posso pausar ou repetir.", text: "Não há punição por sair ou tentar outra vez." },
-      {
-        heading: "Posso escolher uma atividade diferente.",
-        text: "Outras opções continuam disponíveis no catálogo.",
-      },
+      { heading: "Durante um jogo, nem sempre o resultado corresponde ao que eu imaginava.", text: "Um resultado diferente faz parte das possibilidades de muitos jogos." },
+      { heading: "Neste aplicativo, os jogos foram planejados sem punição por erro.", text: "Em algumas atividades, é possível tentar novamente com uma nova disposição dos elementos." },
+      { heading: "Se eu quiser, posso repetir, mudar de atividade ou parar.", text: "As outras estratégias de apoio continuam acessíveis no catálogo." },
     ],
   },
   social: {
-    title: "Uma conversa confusa",
-    summary: "Situação social",
-    tag: "SITUAÇÃO SOCIAL",
-    hasFriend: true,
+    title: "Uma conversa confusa", summary: "Situação social",
+    tag: "SITUAÇÃO SOCIAL", hasFriend: true, art: "social",
     scenes: [
-      {
-        heading: "Uma conversa pode não ficar clara.",
-        text: "Não preciso adivinhar o que outra pessoa quis dizer.",
-      },
-      {
-        heading: "Posso pedir esclarecimento.",
-        text: "Posso fazer uma pergunta simples ou escolher uma pausa.",
-      },
-      {
-        heading: "Posso decidir o próximo passo.",
-        text: "Conversar com alguém de confiança também é uma opção.",
-      },
+      { heading: "Em uma conversa, algumas frases podem ter mais de um significado.", text: "Eu e outra pessoa podemos compreender a mesma frase de modos diferentes." },
+      { heading: "Uma pergunta curta pode esclarecer uma informação que ficou incompleta.", text: "Em alguns momentos, uma pausa na conversa também é possível." },
+      { heading: "Se eu quiser, posso pedir que a pessoa repita ou explique de outra maneira.", text: "Também posso escolher não continuar a conversa naquele momento." },
     ],
   },
   medo: {
-    title: "Quando sinto insegurança",
-    summary: "Medo e insegurança",
-    tag: "MEDO E INSEGURANÇA",
-    hasFriend: false,
+    title: "Quando sinto insegurança", summary: "Medo e insegurança",
+    tag: "MEDO E INSEGURANÇA", hasFriend: false, art: "fear",
     scenes: [
-      {
-        heading: "Algo desconhecido pode parecer difícil.",
-        text: "Posso pedir informações concretas sobre o que está acontecendo.",
-      },
-      {
-        heading: "Posso procurar apoio.",
-        text: "Uma pessoa de confiança pode ser uma opção, se eu quiser.",
-      },
-      { heading: "Posso fazer uma pausa.", text: "Não preciso fazer nada imediatamente." },
+      { heading: "Quando uma situação é pouco conhecida, algumas informações podem estar faltando.", text: "Nem sempre consigo prever o que acontecerá em seguida." },
+      { heading: "Informações sobre o lugar, as pessoas e os próximos passos podem tornar a situação mais compreensível.", text: "Em alguns contextos, existe alguém de confiança com quem posso conversar." },
+      { heading: "Se eu quiser, posso pedir uma explicação ou companhia.", text: "Uma pausa também é possível quando as condições do lugar permitem." },
     ],
   },
   raiva: {
-    title: "Quando estou irritado",
-    summary: "Raiva e irritação",
-    tag: "RAIVA E IRRITAÇÃO",
-    hasFriend: true,
+    title: "Quando estou irritado", summary: "Raiva e irritação",
+    tag: "RAIVA E IRRITAÇÃO", hasFriend: true, art: "anger",
     scenes: [
-      {
-        heading: "Posso dizer que estou irritado.",
-        text: "Esse relato é meu; o aplicativo não tenta interpretar como eu estou.",
-      },
-      {
-        heading: "Posso escolher uma opção segura.",
-        text: "Pausa, silêncio ou apoio fora da tela são escolhas possíveis.",
-      },
-      { heading: "Posso sair quando quiser.", text: "Nenhuma estratégia precisa ser concluída." },
+      { heading: "Em alguns momentos, posso perceber que estou irritado.", text: "Sentir irritação em um momento não define quem eu sou." },
+      { heading: "Barulho, mudanças e outras situações podem coincidir com a irritação, mas isso varia entre pessoas.", text: "Um espaço com menos estímulos pode estar disponível em algumas situações." },
+      { heading: "Se eu quiser, posso sinalizar que preciso de espaço.", text: "Posso continuar, pausar ou sair da atividade no aplicativo." },
     ],
   },
   cansaco: {
-    title: "Preciso de um intervalo",
-    summary: "Cansaço",
-    tag: "CANSAÇO",
-    hasFriend: false,
+    title: "Preciso de um intervalo", summary: "Cansaço",
+    tag: "CANSAÇO", hasFriend: false, art: "tired",
     scenes: [
-      {
-        heading: "Posso precisar diminuir o ritmo.",
-        text: "Posso reconhecer que quero menos demandas agora.",
-      },
-      {
-        heading: "Posso escolher uma pausa.",
-        text: "Ficar em silêncio ou sair da tela são opções.",
-      },
-      {
-        heading: "Posso retomar depois.",
-        text: "O catálogo continua disponível quando eu quiser voltar.",
-      },
+      { heading: "Algumas atividades exigem atenção ou esforço por bastante tempo.", text: "Depois de um período de esforço, posso perceber sinais de cansaço." },
+      { heading: "O cansaço pode variar de intensidade ao longo do dia.", text: "Em alguns momentos, há opções de pausa ou de menos estímulos." },
+      { heading: "Se eu quiser, posso interromper a atividade.", text: "As opções de apoio podem continuar disponíveis quando eu decidir voltar." },
     ],
   },
   dor: {
-    title: "Quando sinto desconforto",
-    summary: "Dor ou mal-estar",
-    tag: "DOR OU MAL-ESTAR",
-    hasFriend: false,
+    title: "Quando sinto desconforto", summary: "Dor ou mal-estar",
+    tag: "DOR OU MAL-ESTAR", hasFriend: false, art: "pain",
     scenes: [
-      {
-        heading: "Posso comunicar o desconforto.",
-        text: "Posso procurar uma pessoa ou profissional adequado, se eu escolher.",
-      },
-      { heading: "Posso me afastar da tela.", text: "Uma pausa fora da tela pode ser uma opção." },
-      {
-        heading: "Não há diagnóstico aqui.",
-        text: "Esta história não interpreta nem explica o desconforto.",
-      },
+      { heading: "Dor e mal-estar podem ter diferentes causas.", text: "Uma história no aplicativo não identifica a causa do desconforto." },
+      { heading: "Eu posso comunicar que sinto dor ou desconforto sem explicar tudo.", text: "Em algumas situações, a avaliação de um profissional de saúde pode ser necessária." },
+      { heading: "Se eu quiser, posso interromper o uso da tela e pedir ajuda.", text: "Quando a dor é intensa, piora ou persiste, procurar atendimento de saúde é importante." },
     ],
   },
 };
@@ -2969,6 +3079,7 @@ function StoryListScreen({
               : "Escolha uma situação para ler, se desejar."}
           </p>
         </div>
+        <EditorialIllustration kind="change" compact />
         <div className="simple-list story-list">
           {stories.map(([id, story]) => (
             <button className="story-row" key={id} onClick={() => onOpen(id)}>
@@ -3050,15 +3161,12 @@ function StoryReaderScreen({
                 style={friendStyle}
                 palette={friendPalette}
                 accessory={friendAccessory}
+                state={scene === 0 ? "neutro" : scene === 1 ? "orientacao" : "acolhimento"}
                 size="story"
               />
             </div>
-          ) : (
-            <Icon name="leaf" size={55} />
-          )}
-          <span className="story-art__symbol">
-            <Icon name="info" size={30} />
-          </span>
+          ) : null}
+          <EditorialIllustration kind={story.art} scene={scene} className="story-editorial" />
         </div>
         <article className="story-copy">
           <p>{story.tag}</p>
@@ -3097,48 +3205,51 @@ function OutsideSupportScreen({
   onEnd: () => void;
   onCatalog: () => void;
 }) {
-  const options = [
-    [
-      "Fazer uma pausa fora da tela",
-      "Olhe para outro lugar ou descanse, se for confortável.",
-      "leaf",
-    ],
-    ["Usar um objeto conhecido", "Escolha algo que já esteja disponível para você.", "heart"],
-    [
-      "Conversar com alguém de confiança",
-      "Se quiser, procure uma pessoa com quem se sinta seguro.",
-      "support",
-    ],
-  ] as const;
+  const [detail, setDetail] = useState<"break" | "object" | "person" | null>(null);
+  const options: Array<{id: "break" | "object" | "person"; title: string; summary: string; art: IllustrationKind; steps: string[]; action: string}> = [
+    {id: "break", title: "Fazer uma pausa fora da tela", summary: "Um intervalo sem cronômetro ou tarefa obrigatória.", art: "outside",
+      steps: ["Se houver um espaço confortável e seguro disponível, você pode se afastar da tela por um momento.", "Você pode olhar para outro lugar, sentar ou ficar em silêncio — somente se desejar.", "Você decide quando voltar, sem precisar cumprir uma duração."] , action: "Encerrar minha pausa" },
+    {id: "object", title: "Usar um objeto conhecido", summary: "Uma possibilidade com algo que já está ao seu alcance.", art: "object",
+      steps: ["Se tiver por perto um objeto familiar e confortável, você pode escolhê-lo.", "Pode ser um tecido, livro, objeto tátil ou outro item de sua preferência.", "Não é necessário utilizar nenhum objeto, e você pode parar quando quiser."], action: "Concluir orientação" },
+    {id: "person", title: "Conversar com alguém de confiança", summary: "Você escolhe se quer companhia ou escuta.", art: "person",
+      steps: ["Se quiser, procure alguém com quem se sinta seguro para conversar.", "Você pode dizer: 'Gostaria de conversar um pouco' ou 'Preciso de companhia agora'.", "Também é possível pedir espaço ou escolher não conversar neste momento."], action: "Concluir orientação" },
+  ];
+  const chosen = options.find((option) => option.id === detail);
   return (
     <section className="T16-OutsideSupport screen">
-      <AppHeader title="Apoio fora da tela" onBack={onBack} onClose={onClose} />
-      <div className="screen-content resource-content">
-        <div>
-          <h1>Apoio fora da tela</h1>
-          <p className="lead">Você também pode escolher opções sem usar o aplicativo.</p>
-        </div>
-        <div className="simple-list">
-          {options.map(([title, description, icon]) => (
-            <div className="outside-row" key={title}>
-              <span className="strategy-icon">
-                <Icon name={icon} />
-              </span>
-              <span>
-                <b>{title}</b>
-                <small>{description}</small>
-              </span>
+      <AppHeader title="Apoio fora da tela" onBack={chosen ? () => setDetail(null) : onBack} onClose={onClose} />
+      <div className="screen-content resource-content outside-support-content">
+        {chosen ? (
+          <>
+            <p className="eyebrow">APOIO FORA DA TELA · OPCIONAL</p>
+            <h1>{chosen.title}</h1>
+            <p className="lead">{chosen.summary}</p>
+            <EditorialIllustration kind={chosen.art} />
+            <div className="outside-detail-steps">
+              {chosen.steps.map((step, index) => <p key={step}><b>{index + 1}</b><span>{step}</span></p>)}
             </div>
-          ))}
-        </div>
-        <div className="information-note">
-          <Icon name="info" size={18} />O aplicativo não faz ligações nem envia mensagens
-          automaticamente.
-        </div>
-        <Button onClick={onEnd}>Encerrar apoio</Button>
-        <Button variant="secondary" onClick={onCatalog}>
-          Voltar às opções
-        </Button>
+            <div className="information-note"><Icon name="info" size={18} /> Nenhuma chamada ou mensagem será enviada pelo aplicativo.</div>
+            <Button onClick={onEnd}>{chosen.action}</Button>
+            <Button variant="secondary" onClick={() => setDetail(null)}>Ver outras opções</Button>
+          </>
+        ) : (
+          <>
+            <div><h1>Apoio fora da tela</h1><p className="lead">Você pode escolher um recurso que não depende da tela.</p></div>
+            <EditorialIllustration kind="outside" compact />
+            <div className="outside-options">
+              {options.map(option => (
+                <button type="button" className="outside-option-card" key={option.id} onClick={() => setDetail(option.id)}>
+                  <EditorialIllustration kind={option.art} compact />
+                  <span><b>{option.title}</b><small>{option.summary}</small><em>Ver orientação</em></span>
+                  <span className="outside-chevron" aria-hidden="true">›</span>
+                </button>
+              ))}
+            </div>
+            <div className="information-note"><Icon name="info" size={18} /> Nada é iniciado automaticamente. Você decide se quer usar alguma opção.</div>
+            <Button variant="secondary" onClick={onCatalog}>Voltar ao catálogo</Button>
+            <Button variant="tertiary" onClick={onEnd}>Encerrar apoio</Button>
+          </>
+        )}
       </div>
     </section>
   );
@@ -3530,7 +3641,7 @@ function SetupMusicScreen({
   onClose: () => void;
   onNext: () => void;
 }) {
-  const genres = ["Instrumental", "Ambiente", "Clássica", "Natureza", "Outros"];
+  const genres = ["Instrumental", "Ambiente", "Clássica", "Natureza", "Pop", "Rock", "Lo-fi", "Acústico", "Eletrônica", "Outros"];
   const [trackName, setTrackName] = useState("");
   const addTrack = () => {
     const normalized = trackName.trim();
@@ -4399,16 +4510,16 @@ function CheckInScreen({
           ))}
         </div>
         <label className="C18-TextField text-field">
-          <span>Outra opção</span>
+          <span>Quer acrescentar algo? (opcional)</span>
           <textarea
             value={state.checkinOther}
             onChange={(event) => onOther(event.target.value)}
-            placeholder="Escreva se quiser"
+            placeholder="Escreva algo sobre o momento, se desejar"
             rows={2}
           />
         </label>
         <div className="screen-actions">
-          <Button onClick={onContinue}>{source === "support" ? "Continuar" : "Confirmar"}</Button>
+          <Button onClick={onContinue}>{source === "support" ? "Confirmar e continuar" : "Confirmar registro"}</Button>
           <Button variant="secondary" onClick={onSkip}>
             Ignorar
           </Button>
@@ -4479,7 +4590,7 @@ function ContextScreen({
           <textarea
             value={state.contextOther}
             onChange={(event) => onOther(event.target.value)}
-            placeholder="Escreva se quiser"
+            placeholder="Escreva algo sobre o momento, se desejar"
             rows={2}
           />
         </label>
@@ -4490,7 +4601,7 @@ function ContextScreen({
           Não quero responder
         </button>
         <div className="screen-actions">
-          <Button onClick={onContinue}>Ver opções</Button>
+          <Button onClick={onContinue}>Ver sugestões de apoio</Button>
           <Button variant="tertiary" onClick={onCancel}>
             Cancelar
           </Button>
@@ -4506,12 +4617,14 @@ function SuggestionsScreen({
   onClose,
   onIgnore,
   onCatalog,
+  onRecommendation,
 }: {
   state: AppState;
   onBack: () => void;
   onClose: () => void;
   onIgnore: () => void;
   onCatalog: (filter: string) => void;
+  onRecommendation: (title: string, category: string) => void;
 }) {
   const suggestions = supportSuggestions(state);
   const context = state.context === "Outra situação" ? state.contextOther.trim() : state.context;
@@ -4534,13 +4647,20 @@ function SuggestionsScreen({
               <span className="card-label">OPÇÃO</span>
               <h2>{title}</h2>
               <p>{reason}</p>
-              <Button variant="secondary" onClick={() => onCatalog(category)}>
-                Abrir no catálogo
+              <Button variant="secondary" onClick={() => onRecommendation(title, category)}>
+                {title === "Catálogo completo" ? "Explorar catálogo" :
+                  title === "Pausa silenciosa" ? "Iniciar pausa" :
+                  title === "Respiração voluntária" ? "Abrir respiração" :
+                  title === "Músicas e sons" ? "Escolher som ou música" :
+                  title === "História contextual" ? "Ler história" :
+                  title === "Orientação breve" ? "Ver orientação" :
+                  title === "Apoio fora da tela" ? "Ver apoio fora da tela" :
+                  title === "Monte seu espaço" ? "Abrir jogo" : "Abrir estratégia"}
               </Button>
             </article>
           ))}
         </div>
-        <Button onClick={() => onCatalog("Todas")}>Ver todas as opções</Button>
+        <Button onClick={() => onCatalog("Todas")}>Explorar todas as estratégias</Button>
         <Button variant="tertiary" onClick={onIgnore}>
           Ignorar sugestões
         </Button>
@@ -4914,12 +5034,13 @@ function OperatorApp() {
 
         <section className="operator-modes" aria-labelledby="oz-permissions-title">
           <h2 id="oz-permissions-title">Antes de acionar o evento</h2>
-          <p>No celular, em Ajustes → Acompanhamento e convites, ative a simulação e conceda a permissão demonstrativa. Mantenha os convites habilitados. O OP01 não pode autorizar em nome da pessoa.</p>
+          <p>No celular, a pessoa pode habilitar a simulação e os convites na tela inicial ou em Ajustes. A permissão demonstrativa precisa ser concedida por ela. O OP01 não pode autorizar em seu nome.</p>
+          <p><b>Acústico:</b> simula um sinal externo e oferece um convite opcional (intervenção passiva). <b>Nominal:</b> simula um pedido voluntário pelo nome do amigo virtual (acesso ativo).</p>
         </section>
 
         <section aria-label="Comandos demonstrativos" className="operator-actions">
-          <Button disabled={!participantOnline} onClick={() => void sendEvent("SIM_EVENTO_ACUSTICO")}>Enviar evento acústico</Button>
-          <Button disabled={!participantOnline} variant="secondary" onClick={() => void sendEvent("SIM_EVENTO_NOMINAL")}>Enviar evento nominal</Button>
+          <Button disabled={!participantOnline} onClick={() => void sendEvent("SIM_EVENTO_ACUSTICO")}>Simular sinal acústico · oferecer apoio</Button>
+          <Button disabled={!participantOnline} variant="secondary" onClick={() => void sendEvent("SIM_EVENTO_NOMINAL")}>Simular pedido pelo nome · abrir apoio</Button>
           <Button disabled={!participantOnline} variant="secondary" onClick={() => void sendEvent("SIM_INDISPONIVEL")}>Simular indisponibilidade</Button>
           <Button disabled={!participantOnline} variant="secondary" onClick={() => void sendEvent("SIM_RESET")}>Fechar convites simulados</Button>
         </section>

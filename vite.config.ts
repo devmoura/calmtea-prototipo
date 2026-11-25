@@ -4,7 +4,14 @@ import tailwindcss from "@tailwindcss/vite";
 import fs from "node:fs";
 import path from "node:path";
 
-import siteConfiguration from "./.figma/make/site.json";
+// Configuração incorporada ao próprio projeto: a publicação não depende da pasta oculta .figma.
+const siteConfiguration = {
+  title: "CalmTEA — Protótipo de Apoio",
+  description: "Protótipo acadêmico de apoio voluntário com simulação controlada de Mágico de Oz.",
+  language: "pt-BR",
+  robots: { index: false },
+  accessibility: { addBypassLinks: false },
+};
 
 // Vite config — https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {

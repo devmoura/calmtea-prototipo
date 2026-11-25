@@ -1,0 +1,59 @@
+CalmTEA — atualizações funcionais, visuais e de conteúdo (25/11/2026)
+
+BASE
+Partiu do último pacote que continha 10 MP3 locais e do OP01 remoto testado
+em dois dispositivos pelo pesquisador. O módulo src/ozRemote.ts e as dependências
+Supabase foram preservados sem alteração.
+
+ALTERAÇÕES DESTA VERSÃO
+- Oito histórias: 48 frases idênticas à planilha fechada V43/P11-R3;
+  permanecem três cenas por história, duas frases literais por cena.
+- Ilustrações editoriais SVG originais no início, catálogo, pausa, respiração,
+  leituras e apoio fora da tela, sem estilo infantil; configuração de movimento reduzido.
+- Expressões discretas do amigo virtual conforme avanço manual da história;
+  cabelo do avatar sem clip-path poligonal que quebrava em pequenas larguras.
+- T16: três orientações de apoio fora da tela clicáveis, com detalhe e retorno.
+- T01: orientações breves com avanço estritamente MANUAL.
+- T07: tempo decorrido e animação visual opcionais; ambos desligados ao iniciar,
+  sem ritmo ou contagem regressiva impostos.
+- J01: nove tipos de objetos e ferramenta de desenho livre com quatro cores,
+  borracha, desfazer traços e limpeza confirmada. Os traços não persistem após sair do jogo.
+- J02: 4, 6 ou 8 pares opcionais com embaralhamento ao iniciar outra rodada.
+- J03: quatro trajetos alternados com linhas SVG centradas nos botões dos pontos.
+- Ajustes de texto e UI do autorrelato, navegação, favoritos e operador.
+- Vite deixa de depender de .figma/make/site.json; a pasta oculta .figma
+  não precisa ser enviada ao GitHub.
+- Os 10 MP3 originais existentes e os créditos de licença foram preservados.
+
+PUBLICAÇÃO SEM PROGRAMAR
+1) Mantenha uma cópia do repositório e do site que já funcionam.
+2) Descompacte este ZIP no computador.
+3) No GitHub, envie os arquivos e pastas da raiz deste ZIP, substituindo
+   os nomes existentes e incluindo o NOVO src/Illustrations.tsx.
+   A pasta oculta .figma não é necessária. Não envie .env com segredos.
+4) Confirme em "Commit changes". O Vercel deverá iniciar um novo deploy.
+5) Confira se ficou "Ready". Se mostrar erro, copie o log do Vercel.
+6) Abra a página no celular com uma aba nova; se estiver em cache,
+   atualize a página ou use navegação privada.
+7) Teste os minijogos, T16, as oito histórias e o áudio; depois execute
+   novamente o teste OP01 no computador e participante no 4G/5G.
+
+VERIFICAÇÕES EFETUADAS AQUI
+- Todos os arquivos TypeScript/TSX alterados passaram pela análise sintática
+  do compilador TypeScript instalado.
+- Verificada correspondência literal das 48 frases com a planilha V43/P11-R3.
+- Confirmada a integridade dos 10 arquivos MP3 no diretório public/audio.
+- Confirmado que src/ozRemote.ts é idêntico ao módulo remoto já existente.
+- NÃO foi possível baixar dependências npm neste ambiente (sem acesso ao registry).
+  Assim, não houve build Vite completo nem validação móvel/visual automatizada.
+  A publicação e os testes de aceitação reais continuam necessários.
+
+LIMITAÇÕES CONHECIDAS
+- Esta versão não introduz integração com redes sociais REAIS. OP01 trabalha
+  apenas com a experiência do próprio protótipo.
+- As histórias seguem roteiro editorial fechado, não constituindo validação
+  de eficácia clínica ou Social Stories individualizadas com usuários.
+- Desenho livre do J01 é mantido na tela enquanto a atividade está aberta;
+  ao fechá-la, os traços são descartados.
+- Supabase Realtime segue em canal público de demonstração, sem transmissão
+  de dados pessoais. Pesquisa com participantes exige revisão ética e de segurança.

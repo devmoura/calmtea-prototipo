@@ -1,0 +1,38 @@
+CALMTEA — ATUALIZAÇÃO DO PLAYER DE SONS E MÚSICAS
+
+O QUE FOI ALTERADO
+- Tela T08: biblioteca com filtros por tipo, gênero e favoritos, opção Prefiro silêncio.
+- Tela T09: reprodutor HTML5 com arquivos MP3 locais: reproduzir, pausar, parar, progresso, volume, favoritagem e troca de faixa.
+- Dez arquivos MP3 reais em public/audio/, sem streaming nem reprodução automática.
+- Preferências de áudio guardadas localmente no navegador.
+- Gêneros disponíveis: tranquilas/ambient, piano/clássica, lo-fi, pop, rock, acústico, eletrônica e natureza.
+- Paisagens sonoras de chuva, mar e floresta.
+- OP01/Supabase mantido; o código desta integração não foi alterado.
+
+IMPORTANTE SOBRE LICENÇAS
+- As faixas são COMPOSIÇÕES INSTRUMENTAIS ORIGINAIS PRODUZIDAS PARA ESTE PROTÓTIPO, NÃO MÚSICAS COMERCIAIS BAIXADAS.
+- Para os timbres foram usados samples do SoundFont TimGM6mb.sf2 (GPL-2). Os sons de natureza são sintetizados.
+- A rede deste ambiente não permitiu baixar gravações CC0 de terceiros. Elas constam como referências externas no documento LICENCAS_E_FONTES.md; não estão no repositório.
+- Documentação completa em public/audio/LICENCAS_E_FONTES.md e public/audio/GPL-2.txt. O script de composição/reprodução está em scripts/gerar_audios_originais.py. O arquivo SoundFont NÃO foi incluído.
+
+COMO PUBLICAR (SEM PROGRAMAR)
+1. Faça backup da versão que funcionou no Vercel.
+2. Extraia o ZIP atualizado. No GitHub, substitua os arquivos src/App.tsx e src/index.css;
+   adicione o novo src/audioLibrary.ts; envie a pasta public/audio completa (11 arquivos MP3/licenças).
+3. Se fizer upload do projeto completo, preserve estrutura de pastas, incluindo src e public.
+4. Confirme Commit changes. O Vercel deverá fazer um novo deploy automaticamente.
+5. No Vercel, confirme o status Ready. Abra / no celular, entre em Apoio > Músicas e sons,
+   escolha Chuva suave e toque em Reproduzir. Verifique se o som sai do alto-falante.
+6. Teste Pausar, Parar, Progresso, Favoritos, Pop, Rock, Lo-fi e controle de volume.
+7. Abra /operador e repita um disparo OP01 remoto para confirmar ausência de regressão.
+
+VALIDAÇÃO REALIZADA
+- Sintaxe dos arquivos TSX/TS alterados: OK.
+- Todos os 10 MP3 possuem duração válida e foram produzidos localmente.
+- NÃO foi possível rodar npm build neste ambiente porque o npm não conseguiu instalar dependências.
+- Portanto, publicação e reprodução real no celular DEVEM ser validadas no Vercel.
+
+RECOMENDAÇÃO DE USO
+- Nunca inicie áudio sem consentimento; a biblioteca não usa autoplay.
+- Não pressupor que rock, pop, sons de natureza ou música são calmantes para toda pessoa.
+- Em pesquisa formal, validar preferências e segurança do público-alvo.

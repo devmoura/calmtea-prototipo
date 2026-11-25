@@ -1,0 +1,37 @@
+CALMTEA / PROTÓTIPO V41 — OP01 REMOTO
+
+ESTADO DA ENTREGA
+- Código original do ZIP enviado pelo usuário preservado (incluindo correções P01).
+- Painel OP01 adaptado com link de sessão e eventos via Supabase Realtime.
+- T19 aparece como sobreposição quando participante permitiu simulação, consentimento e convites.
+- Código analisado estaticamente; integração entre dois dispositivos NÃO testada nesta entrega.
+- Sem dados pessoais ou respostas do usuário transmitidos ao Supabase.
+- Canal remoto público com identificador aleatório: somente piloto técnico. Não apropriado para estudo formal com dados sensíveis sem autenticação e controles de acesso adicionais.
+
+PUBLICAR SEM PROGRAMAR (GitHub Desktop + Vercel)
+1. Descompacte o ZIP no computador.
+2. Abra o GitHub Desktop e use File > Add Local Repository > Choose... para selecionar a pasta.
+   Se oferecer criar um repositório ali, aceite. Depois: Publish repository.
+   Escolha Private se disponível.
+3. No Vercel: Add New > Project > Import Git Repository; selecione o repositório.
+4. Framework: Vite. Build command: npm run build. Output directory: dist.
+   As configurações públicas do Supabase estão incluídas no código, então não são necessárias variáveis adicionais para este teste.
+5. Deploy. Espere a confirmação da publicação e abra o endereço fornecido.
+
+TESTE EM DOIS DISPOSITIVOS
+1. No computador, abra https://ENDERECO-PUBLICADO.vercel.app/operador.
+2. Clique em Criar sessão de teste e Copiar link do participante.
+3. Envie o link por Meet ou WhatsApp; o participante abre pelo navegador no celular.
+4. No celular: entre no app (é possível ignorar a configuração) e abra Ajustes > Acompanhamento e convites.
+5. Ative o acompanhamento simulado, escolha a permissão demonstrativa concedida e habilite convites.
+6. No OP01, aguarde aparecer "Participante conectado no celular".
+7. Pressione Enviar evento acústico. No celular, T19 deve aparecer SOBRE A TELA ATUAL.
+8. No OP01, procure "Confirmação: exibido". Se ignorado, confira as condições configuradas no celular.
+
+ATENÇÃO
+- Abra o operador e o participante na MESMA versão publicada do Vercel. NÃO misture o figma.site antigo com o link Vercel.
+- Não compartilhe senha de banco de dados nem chaves secret/service_role. A chave publishable do projeto é pública.
+- T19 é um convite voluntário, não uma detecção real. Não há escuta de microfone.
+- O teste inicial deve ser com seu próprio celular usando outra rede (4G/5G), sem dados reais.
+- Para pesquisa envolvendo participantes e dados sensíveis, é necessário revisar autenticação, consentimento e o protocolo de pesquisa antes do uso formal.
+- Não existe ainda tela fictícia de rede social neste pacote; primeiro valide a integração remota.

@@ -1,0 +1,22 @@
+CalmTEA V42.1 — correções pontuais nas histórias e sugestões (25/11/2026)
+
+ALTERADO SOMENTE:
+1) T33: história social contextual aparece nas recomendações de TODOS os 8 contextos (Barulho, Mudança, Frustração, Situação social, Medo, Raiva, Cansaço e Dor). Acesso direto à história relacionada.
+2) T33: miniaturas fotográficas nos cartões de recomendação, substituindo círculos vazios. Oito novas imagens geradas por IA ficam em public/images/support/.
+3) HS03 Frustração: três cenas e orientações finais agora tratam de frustração cotidiana, sem referência aos jogos do aplicativo; o banner dessa história usa fotografia contextual.
+4) Apenas CSS de T33 e do banner de HS03 foi acrescido. Demais telas, MP3s, avatares e OP01 não alterados.
+
+IMPORTANTE PARA O TCC:
+O arquivo de texto fechado V43 foi PRESERVADO como histórico. Agora 42 frases mantêm correspondência exata, e as 6 de HS03 são a revisão de 25/11/2026. Consulte documentacao/ADENDO_V42_1_HISTORIA_FRUSTRACAO.md e sincronize o TCC com essa revisão.
+
+GITHUB DESKTOP:
+- Faça backup ou crie uma branch antes de substituir.
+- Para atualização mínima, copie apenas src/App.tsx, src/index.css, a pasta public/images/support/ (8 imagens), scripts/verificar_integridade.py e o novo adendo em documentacao/.
+- Também é possível copiar toda a pasta extraída para o repositório sem apagar .git.
+- Commit e Push origin; confira Ready no Vercel.
+- Teste os oito contextos em Apoio → Como estou me sentindo? → O que aconteceu? → Sugestões e abra a história sugerida; em Frustração, leia até o final.
+- Refaça disparo remoto do OP01 após publicar, para confirmar não regressão.
+
+VALIDAÇÃO:
+- O script scripts/verificar_integridade.py pode ser executado para verificar arquivos e invariantes.
+- Build Vite e teste no navegador ainda requerem execução após publicação.

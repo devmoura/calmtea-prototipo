@@ -388,6 +388,29 @@ function loadState() {
 
 type SupportSuggestion = [title: string, reason: string, category: string];
 
+/** Fotos locais para as sugestões; não são resultados clínicos, apenas referências visuais. */
+const contextThumbnailPaths: Record<string, string> = {
+  Barulho: "/images/support/context-barulho.webp",
+  Mudança: "/images/support/context-mudanca.webp",
+  Frustração: "/images/support/context-frustracao.webp",
+  "Situação social": "/images/support/context-social.webp",
+  Medo: "/images/support/context-medo.webp",
+  Raiva: "/images/support/context-raiva.webp",
+  Cansaço: "/images/support/context-cansaco.webp",
+  Dor: "/images/support/context-dor.webp",
+};
+
+function suggestionThumbnail(title: string, context: string): string {
+  if (title === "História contextual") return contextThumbnailPaths[context] ?? "/images/support/context-social.webp";
+  if (title === "Pausa silenciosa") return "/images/banners/pause.webp";
+  if (title === "Músicas e sons") return "/images/banners/music.webp";
+  if (title === "Apoio fora da tela") return "/images/support/context-cansaco.webp";
+  if (title === "Respiração guiada" || title === "Respiração voluntária") return "/images/support/context-medo.webp";
+  if (title === "Monte seu espaço") return "/images/support/context-mudanca.webp";
+  if (title === "Orientação breve") return "/images/support/context-social.webp";
+  return "/images/support/context-cansaco.webp";
+}
+
 function supportSuggestions(
   state: Pick<
     AppState,
@@ -427,13 +450,9 @@ function supportSuggestions(
   ];
   const byContext: Record<string, SupportSuggestion[]> = {
     Barulho: [
-      [
-        "Pausa silenciosa",
-        `O ambiente está barulhento? Comece reduzindo os sons ao seu redor.${resourceNote}`,
-        "Pausa",
-      ],
+      ["Pausa silenciosa", `O ambiente está barulhento? Comece reduzindo os sons ao seu redor.${resourceNote}`, "Pausa"],
+      ["História contextual", "Veja uma história sobre ambientes barulhentos e maneiras de encontrar mais conforto.", "Histórias"],
       ["Apoio fora da tela", "Talvez se afastar um pouco do celular seja o primeiro passo que você precisa.", "Orientações"],
-      catalog,
     ],
     Mudança: [
       ["Orientação breve", "Quando algo muda sem aviso, ajuda entender primeiro o que será diferente.", "Orientações"],
@@ -446,8 +465,8 @@ function supportSuggestions(
         "Antes de tentar resolver tudo, encontre um momento para respirar e reorganizar as ideias.",
         "Pausa",
       ],
+      ["História contextual", "Uma história sobre reconhecer a frustração e encontrar um próximo passo possível.", "Histórias"],
       ["Monte seu espaço", "Concentre-se em organizar um espaço visual do seu jeito.", "Jogos"],
-      ["História contextual", "Uma pequena história pode ajudar a olhar a frustração por outro ângulo.", "Histórias"],
     ],
     "Situação social": [
       ["História contextual", "Entenda possibilidades para uma conversa que não saiu como esperado.", "Histórias"],
@@ -473,22 +492,18 @@ function supportSuggestions(
     ],
     Raiva: [
       ["Pausa silenciosa", "Vamos diminuir a intensidade antes de seguir.", "Pausa"],
+      ["História contextual", "Uma história sobre irritação, espaço pessoal e formas seguras de se expressar.", "Histórias"],
       ["Orientação breve", "Vamos encontrar uma ação simples para este momento.", "Orientações"],
-      catalog,
     ],
     Cansaço: [
-      [
-        "Apoio fora da tela",
-        "Seu corpo pode estar pedindo um intervalo longe das telas.",
-        "Orientações",
-      ],
+      ["Apoio fora da tela", "Seu corpo pode estar pedindo um intervalo longe das telas.", "Orientações"],
+      ["História contextual", "Leia sobre reconhecer o cansaço e fazer uma pausa quando precisar.", "Histórias"],
       pause,
-      catalog,
     ],
     Dor: [
       ["Apoio fora da tela", "Se há desconforto, priorize uma pausa e considere pedir ajuda.", "Orientações"],
+      ["História contextual", "Uma história sobre comunicar o desconforto e procurar apoio adequado.", "Histórias"],
       pause,
-      catalog,
     ],
   };
   const matchingPersonalStrategy = state.context
@@ -2920,12 +2935,12 @@ const storyData: Record<StoryId, StoryData> = {
     ],
   },
   frustracao: {
-    title: "Quando algo não dá certo", summary: "Frustração em jogo",
-    tag: "FRUSTRAÇÃO", hasFriend: false, art: "game",
+    title: "Quando algo não dá certo", summary: "Quando as coisas não saem como eu esperava",
+    tag: "FRUSTRAÇÃO", hasFriend: false, art: "anger",
     scenes: [
-      { heading: "Durante um jogo, nem sempre o resultado corresponde ao que eu imaginava.", text: "Um resultado diferente faz parte das possibilidades de muitos jogos." },
-      { heading: "Neste aplicativo, os jogos foram planejados sem punição por erro.", text: "Em algumas atividades, é possível tentar novamente com uma nova disposição dos elementos." },
-      { heading: "Se eu quiser, posso repetir, mudar de atividade ou parar.", text: "As outras estratégias de apoio continuam acessíveis no catálogo." },
+      { heading: "Quando algo não acontece como eu esperava, posso sentir frustração.", text: "Isso pode acontecer diante de uma espera, uma mudança ou de uma dificuldade no dia a dia." },
+      { heading: "Posso reconhecer o que me incomodou antes de decidir como agir.", text: "Uma pausa, um ambiente mais tranquilo ou uma conversa podem me ajudar a organizar o próximo passo." },
+      { heading: "Depois de um intervalo, posso tentar outro caminho ou pedir ajuda.", text: "Não preciso resolver tudo de uma vez. Posso voltar ao assunto quando estiver em melhores condições." },
     ],
   },
   social: {
@@ -2978,7 +2993,7 @@ const storyData: Record<StoryId, StoryData> = {
 const storyMentorTips: Record<StoryId, string[]> = {
   sons: ["Quando muitos sons se misturam, vale perceber o que mais incomoda e o que ajuda você a se sentir melhor.", "Se houver fones ou um canto menos movimentado, experimente esse recurso para reduzir estímulos.", "Você pode se afastar por alguns instantes e decidir depois se deseja retornar."],
   mudanca: ["Mudanças inesperadas podem ser difíceis de acompanhar. Comece identificando o que realmente mudou.", "Perguntar o que vai acontecer agora ajuda a tornar a situação mais previsível.", "Peça uma explicação curta ou alguns minutos para se reorganizar."],
-  frustracao: ["Quando algo não sai como você esperava, isso pode ser chato mesmo. Observe o que aconteceu, sem se julgar.", "Aqui você pode experimentar de novo. Não há nota nem punição.", "Se continuar frustrante, mudar de jogo ou fazer uma pausa também é uma boa decisão."],
+  frustracao: ["Quando algo não sai como você imaginou, procure identificar o que aconteceu. A frustração é uma reação possível a esse momento.", "Você pode se afastar um instante, respirar com conforto ou conversar com alguém. Comece pelo que estiver ao seu alcance.", "Escolha um próximo passo pequeno. Pedir ajuda, experimentar outra abordagem ou deixar para depois são possibilidades válidas."],
   social: ["É comum uma mensagem soar diferente para pessoas diferentes. Não é preciso adivinhar tudo.", "Uma pergunta direta pode evitar confusões: ‘Você pode explicar de outro jeito?’", "Se a conversa estiver pesada, você pode retomá-la em outro momento."],
   medo: ["O desconhecido pode trazer muitas perguntas. Procure uma informação concreta sobre o que virá.", "Saber quem estará presente e qual é o próximo passo pode trazer mais segurança.", "Se precisar, peça companhia a alguém de confiança."],
   raiva: ["Sentir raiva é uma experiência humana. O importante é encontrar uma forma segura de atravessar esse momento.", "Diminua os estímulos ao redor, se possível, e perceba o que está aumentando a tensão.", "Você pode avisar que precisa de espaço antes de continuar a conversa ou a atividade."],
@@ -3165,7 +3180,11 @@ function StoryReaderScreen({
               />
             </div>
           ) : null}
-          <EditorialIllustration kind={story.art} scene={scene} className="story-editorial" />
+          {storyId === "frustracao" ? (
+            <img className="story-editorial-photo" src="/images/support/context-frustracao.webp" alt="Pessoa refletindo em um ambiente acolhedor" />
+          ) : (
+            <EditorialIllustration kind={story.art} scene={scene} className="story-editorial" />
+          )}
         </div>
         <article className="story-copy">
           <p>{story.tag}</p>
@@ -4571,19 +4590,26 @@ function SuggestionsScreen({
         <div className="suggestion-list">
           {suggestions.map(([title, reason, category]) => (
             <article className="C41-SupportSuggestionCard suggestion-card" key={title}>
-              <span className="card-label">OPÇÃO</span>
-              <h2>{title}</h2>
-              <p>{reason}</p>
-              <Button variant="secondary" onClick={() => onRecommendation(title, category)}>
-                {title === "Catálogo completo" ? "Explorar catálogo" :
-                  title === "Pausa silenciosa" ? "Iniciar pausa" :
-                  title === "Respiração guiada" || title === "Respiração voluntária" ? "Começar respiração" :
-                  title === "Músicas e sons" ? "Escolher som ou música" :
-                  title === "História contextual" ? "Ler história" :
-                  title === "Orientação breve" ? "Ver orientação" :
-                  title === "Apoio fora da tela" ? "Ver apoio fora da tela" :
-                  title === "Monte seu espaço" ? "Abrir jogo" : "Abrir estratégia"}
-              </Button>
+              <img
+                className="suggestion-card__thumbnail"
+                src={suggestionThumbnail(title, state.context)}
+                alt=""
+                loading="lazy"
+              />
+              <div className="suggestion-card__body">
+                <h2>{title === "História contextual" ? "História para este momento" : title}</h2>
+                <p>{reason}</p>
+                <Button variant="secondary" onClick={() => onRecommendation(title, category)}>
+                  {title === "Catálogo completo" ? "Explorar catálogo" :
+                    title === "Pausa silenciosa" ? "Iniciar pausa" :
+                    title === "Respiração guiada" || title === "Respiração voluntária" ? "Começar respiração" :
+                    title === "Músicas e sons" ? "Escolher som ou música" :
+                    title === "História contextual" ? "Ler história" :
+                    title === "Orientação breve" ? "Ver orientação" :
+                    title === "Apoio fora da tela" ? "Ver apoio fora da tela" :
+                    title === "Monte seu espaço" ? "Abrir jogo" : "Abrir estratégia"}
+                </Button>
+              </div>
             </article>
           ))}
         </div>

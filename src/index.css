@@ -5177,3 +5177,31 @@ h1,h2,h3,.button,.section-title,.screen-content h1,.app-header p { font-family:"
 .T12-CheckIn .text-field{min-width:0;}
 .T12-CheckIn textarea,.T32-Context textarea{width:100%;min-width:0;max-width:100%;}
 @media(max-width:360px){.home-hero-copy{width:72%;padding-left:15px}.home-hero-copy strong{font-size:18px}.home-hero-photo{width:52%}}
+
+
+/* V42.1 — Miniaturas fotográficas contextuais na T33: substitui círculos vazios. */
+.T33-Suggestions .suggestion-card::before{display:none!important;content:none!important;}
+.T33-Suggestions .suggestion-card{
+  display:grid;grid-template-columns:104px minmax(0,1fr);align-items:start;
+  gap:13px;padding:13px;min-height:124px;
+}
+.T33-Suggestions .suggestion-card__thumbnail{
+  display:block;width:104px;height:112px;object-fit:cover;
+  border-radius:12px;background:#e9f1f2;
+}
+.T33-Suggestions .suggestion-card__body{display:flex;flex-direction:column;min-width:0;gap:6px;}
+.T33-Suggestions .suggestion-card__body h2{font-size:16px;margin:0;line-height:1.32;}
+.T33-Suggestions .suggestion-card__body p{font-size:13px;line-height:1.43;margin:0;}
+.T33-Suggestions .suggestion-card__body .button{
+  min-height:39px;width:auto;align-self:flex-start;justify-content:flex-start;
+  margin:2px 0 0;padding:0 9px;border:0;border-radius:8px;
+  background:#e9f4f6;color:#155e75;font-size:13px;line-height:1.3;
+}
+.T33-Suggestions .suggestion-card__body .button:focus-visible{outline:3px solid #155e75;outline-offset:2px;}
+.story-art .story-editorial-photo{display:block;width:100%;height:100%;object-fit:cover;border-radius:18px;}
+@media(max-width:360px){
+  .T33-Suggestions .suggestion-card{grid-template-columns:82px minmax(0,1fr);gap:10px;padding:11px;}
+  .T33-Suggestions .suggestion-card__thumbnail{width:82px;height:95px;}
+  .T33-Suggestions .suggestion-card__body h2{font-size:15px;}
+  .T33-Suggestions .suggestion-card__body p{font-size:12px;}
+}

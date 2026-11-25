@@ -264,16 +264,28 @@ export function StatusLabel({ mode }: { mode: "off" | "sim_on" | "unavailable" }
   );
 }
 
-export type AvatarVariant = "neutral1" | "neutral2";
+export type AvatarVariant = "neutral1" | "neutral2" | "portrait01" | "portrait02" | "portrait03" | "portrait04" | "portrait05" | "portrait06" | "portrait07" | "portrait08" | "portrait09" | "portrait10" | "portrait11" | "portrait12";
 export type AvatarPalette = "brisa" | "folha" | "lavanda";
 export type AvatarAccessory = "none" | "faixa" | "ponto";
-export type VirtualFriendStyle = "neutro" | "acolhimento" | "orientacao";
+export type VirtualFriendStyle = "neutro" | "acolhimento" | "orientacao" | "portrait01" | "portrait02" | "portrait03" | "portrait04" | "portrait05" | "portrait06" | "portrait07" | "portrait08" | "portrait09" | "portrait10" | "portrait11" | "portrait12";
 export type VirtualFriendState = "neutro" | "acolhimento" | "orientacao";
 type AvatarSize = "option" | "preview" | "profile" | "home" | "guidance" | "story" | "state";
 
 const avatarVariantLabels: Record<AvatarVariant, string> = {
   neutral1: "variação A",
-  neutral2: "variação B",
+  neutral2: "cabelo ondulado",
+  portrait01: "tranças longas e pele escura",
+  portrait02: "cabelo afro curto e pele escura",
+  portrait03: "cachos longos e pele morena",
+  portrait04: "cabelo ruivo curto e pele clara",
+  portrait05: "cabelo preto longo e pele morena",
+  portrait06: "cabelo preto curto e óculos",
+  portrait07: "cabelo raspado e pele escura",
+  portrait08: "cabelo loiro ondulado e pele clara",
+  portrait09: "cachos escuros e pele morena",
+  portrait10: "cabelo afro volumoso e pele escura",
+  portrait11: "cabelo castanho comprido e pele clara",
+  portrait12: "cabelo escuro curto e pele morena",
 };
 
 const paletteLabels: Record<AvatarPalette, string> = {
@@ -289,9 +301,19 @@ const accessoryLabels: Record<AvatarAccessory, string> = {
 };
 
 const friendStyleLabels: Record<VirtualFriendStyle, string> = {
-  neutro: "neutra",
-  acolhimento: "de acolhimento",
-  orientacao: "de orientação",
+  neutro:"padrão",acolhimento:"acolhedora",orientacao:"orientação",
+  portrait01:"retrato 1",
+  portrait02:"retrato 2",
+  portrait03:"retrato 3",
+  portrait04:"retrato 4",
+  portrait05:"retrato 5",
+  portrait06:"retrato 6",
+  portrait07:"retrato 7",
+  portrait08:"retrato 8",
+  portrait09:"retrato 9",
+  portrait10:"retrato 10",
+  portrait11:"retrato 11",
+  portrait12:"retrato 12",
 };
 
 const friendStateLabels: Record<VirtualFriendState, string> = {
@@ -314,53 +336,20 @@ type HumanAvatarProps = {
   decorative?: boolean;
 };
 
-function HumanAvatar({
-  name,
-  variant,
-  palette,
-  accessory,
-  size,
-  subject,
-  friendStyle,
-  friendState,
-  className = "",
-  label,
-  decorative = false,
-}: HumanAvatarProps) {
-  const accessibility = decorative
-    ? { "aria-hidden": true }
-    : { role: "img" as const, "aria-label": label };
-  const classes = [
-    "human-avatar",
-    `human-avatar--size-${size}`,
-    `human-avatar--variant-${variant}`,
-    `human-avatar--palette-${palette}`,
-    `human-avatar--${subject}`,
-    friendStyle && `human-avatar--friend-style-${friendStyle}`,
-    friendState && `human-avatar--friend-state-${friendState}`,
-    className,
-  ]
-    .filter(Boolean)
-    .join(" ");
+const portraitImage: Record<AvatarVariant, string> = {
+  neutral1: "/images/avatars/portrait-01.webp",
+  neutral2: "/images/avatars/portrait-03.webp",
+  ...Object.fromEntries(Array.from({length: 12},(_,i) => [
+    `portrait${String(i+1).padStart(2,"0")}`,
+    `/images/avatars/portrait-${String(i+1).padStart(2,"0")}.webp`,
+  ])) as Record<Exclude<AvatarVariant, "neutral1" | "neutral2">, string>,
+};
 
-  return (
-    <span className={classes} data-avatar-name={name} {...accessibility}>
-      <span className="human-avatar__body" />
-      <span className="human-avatar__neck" />
-      <span className="human-avatar__face">
-        <span className="human-avatar__eye human-avatar__eye--left" />
-        <span className="human-avatar__eye human-avatar__eye--right" />
-        <span className="human-avatar__mouth" />
-      </span>
-      <span className="human-avatar__hair" />
-      {accessory === "faixa" && (
-        <span className="human-avatar__accessory human-avatar__accessory--faixa" />
-      )}
-      {accessory === "ponto" && (
-        <span className="human-avatar__accessory human-avatar__accessory--ponto" />
-      )}
-    </span>
-  );
+function HumanAvatar({name,variant,palette,size,subject,friendStyle,friendState,className="",label,decorative=false}:HumanAvatarProps) {
+  const classes = ["human-avatar", "human-avatar--photo", `human-avatar--size-${size}`, `human-avatar--palette-${palette}`, `human-avatar--${subject}`,friendStyle && `human-avatar--friend-style-${friendStyle}`,friendState && `human-avatar--friend-state-${friendState}`, className].filter(Boolean).join(" ");
+  return <span className={classes} data-avatar-name={name}>
+    <img className="human-avatar__photo" src={portraitImage[variant]} alt={decorative ? "" : label} loading={size==="option" ? "lazy" : "eager"} />
+  </span>;
 }
 
 export function PersonAvatar({
@@ -384,7 +373,7 @@ export function PersonAvatar({
   const label =
     avatar === "none"
       ? `${displayName}: nenhum avatar pessoal selecionado`
-      : `${displayName}, ${avatarVariantLabels[avatar]}, paleta ${paletteLabels[palette]}, ${accessoryLabels[accessory]}`;
+      : `${displayName}, retrato ilustrativo com ${avatarVariantLabels[avatar]}`;
   const accessibility = decorative
     ? { "aria-hidden": true }
     : { role: "img" as const, "aria-label": label };
@@ -435,12 +424,12 @@ export function VirtualFriendAvatar({
   decorative?: boolean;
 }) {
   const displayName = name.trim() || "Amigo";
-  const label = `${displayName}, amigo virtual em estado ${friendStateLabels[state]}, aparência ${friendStyleLabels[style]}, paleta ${paletteLabels[palette]}, ${accessoryLabels[accessory]}`;
+  const label = `${displayName}, amigo virtual em estado ${friendStateLabels[state]}, retrato ${friendStyleLabels[style]}`;
 
   return (
     <HumanAvatar
       name={displayName}
-      variant={style === "orientacao" ? "neutral2" : "neutral1"}
+      variant={style.startsWith("portrait") ? style as AvatarVariant : style === "orientacao" ? "portrait06" : style === "acolhimento" ? "portrait10" : "portrait02"}
       palette={palette}
       accessory={accessory}
       size={size}

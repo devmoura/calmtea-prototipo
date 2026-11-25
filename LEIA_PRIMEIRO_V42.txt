@@ -1,0 +1,72 @@
+CalmTEA V42 — REPAGINACAO FUNCIONAL E VISUAL (25/11/2026)
+=======================================================
+
+Esta entrega atualiza o código React/Vite da versão V41. NÃO usa Figma Make.
+
+O QUE MUDOU
+-----------
+1. Avatares pessoais e do amigo virtual: 12 retratos fotográficos GERADOS POR IA,
+   reunindo diversos tons de pele, cabelos e estilos. Seleção nos fluxos T29,
+   T30 e T20. Sem os antigos rostos geométricos nem controles de acessórios
+   que não mudavam a representação fotográfica.
+2. Respiração T07: círculo animado com fase e contagem, inicia após abertura
+   de uma atividade de respiração, alternando 4s inspirar / 6s expirar. Permite
+   pausar e encerrar; não exige selecionar checkboxes de animação ou relógio.
+   Movimento reduzido do sistema ou do aplicativo é respeitado.
+3. T12 'Como você está se sentindo?': opções ilustradas por emojis, rótulos
+   menos burocráticos e menos botões. Texto livre continua opcional.
+4. Recomendações T33 e catálogo T02: textos de ação revisados, acesso à
+   respiração diretamente em T07 e cartões reestruturados responsivamente.
+5. Favoritos: todas as nove opções de apoio do catálogo podem ser marcadas.
+6. T01: novo banner fotográfico, orientação breve em cartão e rotação automática
+   a cada 15s (desligada quando o usuário prefere reduzir movimento).
+7. Histórias sociais: 48 frases canônicas da V43 PRESERVADAS LITERALMENTE;
+   adição de dicas separadas em tom de mentor por cena (24 dicas), sem alterar
+   o texto fixo do TCC. Para mudar as 48 frases, seria necessário sincronizar
+   a fundamentação e o documento V43.
+8. Orientações rápidas e apoio fora da tela: texto mais direto e prático.
+9. Tipografia: Montserrat em títulos e botões + Inter nos textos; fallback
+   de sistema quando o Google Fonts não está disponível.
+10. Banners com imagem gerada por IA para pausa e música; o catálogo preserva
+    ilustrações vetoriais originais onde são adequadas. Algumas telas ainda usam
+    SVG e NÃO receberam fotografia exclusiva. Consulte public/images/ORIGEM_E_USO.md.
+
+PRESERVADO
+----------
+- Todas as 37 telas registradas (T01-T37) e inventário dos 35 cenários Q01-Q35.
+- Dez arquivos MP3 locais do player.
+- src/ozRemote.ts, comunicação com Supabase e painel OP01 (arquivo idêntico à V41).
+- Regras de permissão do participante e não utilização real de microfone.
+- Conteúdo literal das 48 frases das histórias V43.
+
+VALIDAÇÃO REALIZADA
+-------------------
+- Testes estáticos scripts/verificar_integridade.py: APROVADOS.
+- Análise sintática dos arquivos TypeScript: 0 erros de parse.
+- Integridade de OP01, MP3s e CSV da V43 comparada com o arquivo V41: preservada.
+- A compilação npm run build e os testes em navegador NÃO foram concluídos:
+  este ambiente não conseguiu acessar registry.npmjs.org (erro EAI_AGAIN).
+- As modificações ainda exigem validação no Vercel, especialmente telas
+  T01, T02, T03, T07, T12, T20, T29, T30, T33 e /operador.
+
+ATUALIZAR GITHUB SEM APAGAR .git
+--------------------------------
+1. Faça uma cópia do repositório atual funcionando (ou utilize uma branch).
+2. Extraia este ZIP em uma pasta temporária.
+3. Pelo GitHub Desktop, abra Repository > Show in Explorer.
+4. Copie o CONTEÚDO da pasta extraída para a raiz do repositório, substituindo
+   src/, public/ e arquivos de configuração, sem excluir a pasta oculta .git.
+5. No GitHub Desktop: confira Changes > Commit to main > Push origin.
+6. No Vercel, aguarde o novo deploy e confira 'Ready'. Se 'Build failed',
+   envie o log de compilação para correção antes de testar no celular.
+7. Teste a URL publicada em janela privada e no celular 5G.
+8. Refaça o teste OP01 no computador e evento SIM_EVENTO_ACUSTICO com consentimento
+   do participante, usando link de sessão remota.
+
+NOTA DE SEGURANÇA E LICENÇAS
+---------------------------
+- O canal Supabase é demonstrativo/público, não apto a pesquisa com dados
+  pessoais sem autenticação e canal privado (revisão antes de coleta real).
+- Os avatares são retratos gerados por IA, não fotos de participantes.
+- Revisar licenças do banco de sons do pacote de áudio anterior antes de
+  divulgação fora do âmbito acadêmico. public/audio/LICENCAS_E_FONTES.md.

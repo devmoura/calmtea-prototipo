@@ -45,7 +45,7 @@ import {
 
 type AcousticMode = "off" | "sim_on" | "unavailable";
 type Feedback = { tone: "info" | "success"; text: string } | null;
-type StrategyId = "pause" | "breath" | "music" | "space";
+type StrategyId = "pause" | "breath" | "music" | "space" | "pairs" | "path" | "guide" | "stories" | "outside";
 type BreathState = "idle" | "active" | "paused";
 type AudioState = "idle" | "playing" | "paused" | "error";
 type SceneKind = "planta" | "mesa" | "luz" | "almofada" | "poltrona" | "livro" | "tapete" | "quadro" | "luminaria";
@@ -73,9 +73,19 @@ const accessoryOptions: Array<[AccessoryChoice, string]> = [
   ["ponto", "Detalhe"],
 ];
 const friendStyleOptions: Array<[VirtualFriendStyle, string]> = [
-  ["neutro", "Neutro"],
-  ["acolhimento", "Acolhimento"],
-  ["orientacao", "Orientação"],
+  ["neutro","Padrão"],
+  ["portrait01","Tranças"],
+  ["portrait02","Afro curto"],
+  ["portrait03","Cachos"],
+  ["portrait04","Ruivo"],
+  ["portrait05","Cabelo longo"],
+  ["portrait06","Com óculos"],
+  ["portrait07","Raspado"],
+  ["portrait08","Loiro"],
+  ["portrait09","Cachos curtos"],
+  ["portrait10","Afro volumoso"],
+  ["portrait11","Castanho"],
+  ["portrait12","Cabelo curto"],
 ];
 
 const paletteLabels: Record<PaletteChoice, string> = Object.fromEntries(paletteOptions) as Record<
@@ -401,28 +411,14 @@ function supportSuggestions(
   const resourceNote = availableResource
     ? ` Você informou ${resourceLabels[availableResource]} como disponível.`
     : "";
-  const catalog: SupportSuggestion = [
-    "Catálogo completo",
-    "Veja todas as opções sem iniciar nada automaticamente.",
-    "Todas",
-  ];
-  const pause: SupportSuggestion = [
-    "Pausa silenciosa",
-    `Uma opção sem som, sem tempo e sem demanda.${resourceNote}`,
-    "Pausa",
-  ];
-  const breath: SupportSuggestion = [
-    "Respiração voluntária",
-    "Você decide se quer iniciar, pausar ou sair.",
-    "Respiração",
-  ];
-  const music: SupportSuggestion = [
-    "Músicas e sons",
-    state.prefTracks.length
-      ? `Você marcou ${state.prefTracks[0]} como faixa favorita. Nada toca automaticamente.`
-      : `Você marcou ${state.prefGenres[0]} como gênero de interesse. Nada toca automaticamente.`,
-    "Música",
-  ];
+  const catalog: SupportSuggestion = ["Catálogo completo", "Veja todas as possibilidades de apoio reunidas em um só lugar.", "Todas"];
+  const pause: SupportSuggestion = ["Pausa silenciosa", `Reduza os estímulos por um momento.${resourceNote}`, "Pausa"];
+  const breath: SupportSuggestion = ["Respiração guiada", "Acompanhe um ritmo visual suave para inspirar e expirar.", "Respiração"];
+  const music: SupportSuggestion = ["Músicas e sons", state.prefTracks.length
+    ? `Que tal ouvir ${state.prefTracks[0]}? Sua música favorita está aqui.`
+    : state.prefGenres.length
+      ? `Explore uma trilha de ${state.prefGenres[0]} ou descubra outros sons.`
+      : "Descubra um som ou uma música que combine com este instante.", "Música"];
 
   const general = [
     pause,
@@ -433,31 +429,31 @@ function supportSuggestions(
     Barulho: [
       [
         "Pausa silenciosa",
-        `Você relatou barulho; esta é uma opção sem som.${resourceNote}`,
+        `O ambiente está barulhento? Comece reduzindo os sons ao seu redor.${resourceNote}`,
         "Pausa",
       ],
-      ["Apoio fora da tela", "Inclui a possibilidade de afastar-se da tela.", "Orientações"],
+      ["Apoio fora da tela", "Talvez se afastar um pouco do celular seja o primeiro passo que você precisa.", "Orientações"],
       catalog,
     ],
     Mudança: [
-      ["Orientação breve", "Uma opção em passos curtos para uma mudança declarada.", "Orientações"],
-      ["História contextual", "Você pode escolher ler uma história sobre mudança.", "Histórias"],
+      ["Orientação breve", "Quando algo muda sem aviso, ajuda entender primeiro o que será diferente.", "Orientações"],
+      ["História contextual", "Leia uma situação parecida e veja ideias para lidar com a mudança.", "Histórias"],
       pause,
     ],
     Frustração: [
       [
         "Pausa silenciosa",
-        "Você pode escolher uma pausa antes de decidir o próximo passo.",
+        "Antes de tentar resolver tudo, encontre um momento para respirar e reorganizar as ideias.",
         "Pausa",
       ],
-      ["Monte seu espaço", "Uma atividade livre, sem pontuação ou resultado obrigatório.", "Jogos"],
-      ["História contextual", "Há uma leitura opcional sobre frustração em jogos.", "Histórias"],
+      ["Monte seu espaço", "Concentre-se em organizar um espaço visual do seu jeito.", "Jogos"],
+      ["História contextual", "Uma pequena história pode ajudar a olhar a frustração por outro ângulo.", "Histórias"],
     ],
     "Situação social": [
-      ["História contextual", "Há uma opção de leitura sobre situações sociais.", "Histórias"],
+      ["História contextual", "Entenda possibilidades para uma conversa que não saiu como esperado.", "Histórias"],
       [
         "Apoio fora da tela",
-        "Inclui conversar com uma pessoa de confiança, por iniciativa sua.",
+        "Às vezes, dividir o que sente com alguém conhecido ajuda a tornar o momento mais leve.",
         "Orientações",
       ],
       catalog,
@@ -465,32 +461,32 @@ function supportSuggestions(
     Medo: [
       [
         "Pausa silenciosa",
-        "Uma pausa permanece disponível enquanto você decide o que fazer.",
+        "Diminua os estímulos ao redor e dê tempo às suas ideias.",
         "Pausa",
       ],
       [
         "História contextual",
-        "Você pode escolher uma leitura descritiva, sem obrigação.",
+        "Conhecer os próximos passos pode ajudar em momentos de incerteza.",
         "Histórias",
       ],
-      ["Apoio fora da tela", "Inclui opções de apoio humano por iniciativa sua.", "Orientações"],
+      ["Apoio fora da tela", "Lembre-se de quem pode estar por perto para oferecer companhia.", "Orientações"],
     ],
     Raiva: [
-      ["Pausa silenciosa", "Uma opção breve e sem demanda continua disponível.", "Pausa"],
-      ["Orientação breve", "Você pode avançar ou sair de cada passo quando quiser.", "Orientações"],
+      ["Pausa silenciosa", "Vamos diminuir a intensidade antes de seguir.", "Pausa"],
+      ["Orientação breve", "Vamos encontrar uma ação simples para este momento.", "Orientações"],
       catalog,
     ],
     Cansaço: [
       [
         "Apoio fora da tela",
-        "Inclui a alternativa de diminuir demandas e afastar-se da tela.",
+        "Seu corpo pode estar pedindo um intervalo longe das telas.",
         "Orientações",
       ],
       pause,
       catalog,
     ],
     Dor: [
-      ["Apoio fora da tela", "Você pode consultar opções para se afastar da tela.", "Orientações"],
+      ["Apoio fora da tela", "Se há desconforto, priorize uma pausa e considere pedir ajuda.", "Orientações"],
       pause,
       catalog,
     ],
@@ -502,7 +498,7 @@ function supportSuggestions(
     ? [
         [
           matchingPersonalStrategy.title,
-          `Você registrou esta estratégia para o contexto declarado: ${state.context}.`,
+          `Você já conhece este recurso e o marcou para situações como ${state.context}.`,
           "Pessoais",
         ],
       ]
@@ -853,7 +849,7 @@ function ParticipantApp() {
       return;
     }
     if (title === "Pausa silenciosa") return navigate("T05");
-    if (title === "Respiração voluntária") return navigate("T07", { patch: { breathState: "idle" } });
+    if (title === "Respiração guiada" || title === "Respiração voluntária") return navigate("T07", { patch: { breathState: "active" } });
     if (title === "Músicas e sons") return navigate("T08");
     if (title === "Monte seu espaço") return navigate("T10");
     if (title === "Apoio fora da tela") return navigate("T16");
@@ -954,7 +950,7 @@ function ParticipantApp() {
               favorites={state.favorites}
               onToggleFavorite={toggleFavorite}
               onOpen={(screen) =>
-                navigate(screen, screen === "T11" ? { patch: { guideStep: 0 } } : {})
+                navigate(screen === "T06" ? "T07" : screen, screen === "T06" ? { patch: { breathState: "active" } } : screen === "T11" ? { patch: { guideStep: 0 } } : {})
               }
               onOpenFavorites={() => navigate("T03")}
               onOpenPersonal={() => navigate("T04")}
@@ -966,7 +962,7 @@ function ParticipantApp() {
               onBack={goBack}
               onClose={closeCurrent}
               onToggleFavorite={toggleFavorite}
-              onOpen={(screen) => navigate(screen)}
+              onOpen={(screen) => navigate(screen === "T06" ? "T07" : screen, screen === "T06" ? {patch:{breathState:"active"}} : {})}
               onCatalog={() => navigate("T02")}
             />
           )}
@@ -1511,7 +1507,7 @@ function WelcomeScreen({ onUse, onConfigure }: { onUse: () => void; onConfigure:
       </div>
       <h1>Bem-vindo(a)!</h1>
       <p className="lead">
-        Um espaço de apoio e estratégias para o seu bem-estar, no seu ritmo e do seu jeito.
+        Um lugar para reorganizar as ideias, encontrar conforto e seguir com mais leveza.
       </p>
       <div className="welcome-preview-list">
         <div>
@@ -1579,11 +1575,17 @@ function HomeScreen({
 }) {
   const [orientationIndex, setOrientationIndex] = useState(0);
   const orientationSteps = [
-    { title:"Escolha um recurso no seu tempo", text:"Você pode explorar as opções e sair de qualquer atividade quando quiser." },
-    { title:"Uma pausa é uma escolha", text:"Se desejar, procure um lugar confortável ou utilize uma atividade silenciosa." },
-    { title:"Apoio também pode acontecer fora da tela", text:"Um objeto conhecido ou uma conversa com alguém de confiança podem ser opções." },
+    {title:"Comece pelo que está ao alcance",text:"Um minuto em um lugar mais tranquilo pode ajudar a reorganizar as ideias."},
+    {title:"Diminua os estímulos",text:"Se o ambiente estiver intenso, experimente reduzir luz, ruídos ou movimento ao seu redor."},
+    {title:"Busque algo familiar",text:"Uma música conhecida, um objeto confortável ou uma pessoa de confiança podem trazer segurança."},
   ];
-  const orientation = orientationSteps[orientationIndex];
+  useEffect(()=>{
+    const media=window.matchMedia("(prefers-reduced-motion: reduce)");
+    if(media.matches || state.reduceMotion)return;
+    const id=window.setInterval(()=>setOrientationIndex(i=>(i+1)%orientationSteps.length),15000);
+    return()=>window.clearInterval(id);
+  },[state.reduceMotion]);
+  const orientation=orientationSteps[orientationIndex];
   return (
     <section className="T01-Home screen">
       <AppHeader title="Início" onBack={onBack} />
@@ -1591,24 +1593,14 @@ function HomeScreen({
         <div>
           <h1>Olá!</h1>
           <p className="lead">
-            Que bom te ver aqui.
+            Que bom ter você por aqui.
             <br />
-            Como você quer começar?
+            Vamos encontrar um pouco de espaço para você hoje.
           </p>
         </div>
         <div className="home-companion">
-          <EditorialIllustration kind="home" className="home-editorial" />
-          <VirtualFriendAvatar
-            className="home-companion__avatar"
-            name={state.friendName}
-            style={state.friendStyle}
-            palette={state.friendPalette}
-            accessory={state.friendAccessory}
-            size="home"
-          />
-          <div className="speech-bubble">
-            Posso te apoiar a explorar estratégias que funcionem para você.
-          </div>
+          <img className="home-hero-photo" src="/images/avatars/portrait-03.webp" alt="Retrato ilustrativo de pessoa jovem com cabelos cacheados" />
+          <div className="home-hero-copy"><span>Um espaço de apoio</span><strong>Um passo de cada vez.</strong><p>Comece pelo que pode trazer conforto agora.</p></div>
         </div>
         <div className="home-main-actions">
           <Button onClick={onSupport}>
@@ -1649,15 +1641,11 @@ function HomeScreen({
             </button>
           </div>
         </div>
-        <section className="home-orientations" aria-label="Orientações breves, navegação manual">
+        <section className="home-orientations" aria-label="Orientações breves, atualizadas automaticamente">
           <div className="home-orientations__heading"><h2>Orientações breves</h2><span>{orientationIndex+1} de {orientationSteps.length}</span></div>
           <div className="home-orientations__card"><EditorialIllustration kind="outside" compact />
             <div><b>{orientation.title}</b><p>{orientation.text}</p></div></div>
-          <div className="home-orientations__buttons">
-            <button type="button" onClick={()=>setOrientationIndex(i=>Math.max(0,i-1))} disabled={orientationIndex===0}>Anterior</button>
-            <button type="button" onClick={()=>setOrientationIndex(i=>Math.min(orientationSteps.length-1,i+1))} disabled={orientationIndex===orientationSteps.length-1}>Próxima</button>
-            <button type="button" onClick={onGuidance}>Ver orientações completas</button>
-          </div>
+          <button type="button" className="home-orientations__cta" onClick={onGuidance}>Ver mais orientações <span aria-hidden="true">→</span></button>
         </section>
         <div className="home-demo-settings" aria-label="Configurações rápidas dos convites de apoio">
           <h2>Convites de apoio durante a demonstração</h2>
@@ -1713,7 +1701,7 @@ const categories = [
   "Pessoais",
 ];
 type CatalogItem = {
-  id: StrategyId | "pairs" | "path" | "guide" | "stories" | "outside";
+  id: StrategyId;
   title: string;
   description: string;
   category: string;
@@ -1724,63 +1712,63 @@ const catalogItems: CatalogItem[] = [
   {
     id: "pause",
     title: "Pausa silenciosa",
-    description: "Uma pausa sem cronômetro, som ou demanda.",
+    description: "Encontre um lugar confortável e diminua os estímulos por alguns instantes.",
     category: "Pausa",
     screen: "T05",
   },
   {
     id: "breath",
     title: "Respiração",
-    description: "Você inicia, pausa, retoma ou sai quando quiser.",
+    description: "Acompanhe o círculo e faça algumas respirações suaves.",
     category: "Respiração",
     screen: "T06",
   },
   {
     id: "music",
     title: "Músicas e sons",
-    description: "Seleção voluntária com alternativa de silêncio.",
+    description: "Encontre uma trilha que combine com seu momento.",
     category: "Música",
     screen: "T08",
   },
   {
     id: "space",
     title: "Monte seu espaço",
-    description: "Jogo livre de organizar formas simples.",
+    description: "Crie seu cantinho ideal, peça por peça.",
     category: "Jogos",
     screen: "T10",
   },
   {
     id: "pairs",
     title: "Combine os pares",
-    description: "Jogo de pares sem pontos, tempo ou punição.",
+    description: "Encontre os pares e concentre-se em uma escolha de cada vez.",
     category: "Jogos",
     screen: "T22",
   },
   {
     id: "path",
     title: "Desenhe o caminho",
-    description: "Trajeto visual reversível, no seu ritmo.",
+    description: "Conecte os pontos e descubra um novo percurso.",
     category: "Jogos",
     screen: "T23",
   },
   {
     id: "guide",
     title: "Orientações breves",
-    description: "Uma ação por etapa e saída sempre visível.",
+    description: "Ideias práticas para quando tudo parece intenso demais.",
     category: "Orientações",
     screen: "T11",
   },
   {
     id: "stories",
     title: "Histórias sociais",
-    description: "Leitura contextual voluntária.",
+    description: "Cenas do cotidiano que ajudam a compreender situações e possibilidades.",
     category: "Histórias",
     screen: "T14",
   },
   {
     id: "outside",
     title: "Apoio fora da tela",
-    description: "Opções que você pode escolher sem usar o aplicativo.",
+    description: "Pequenas atitudes que podem ajudar longe das telas.",
     category: "Orientações",
     screen: "T16",
   },
@@ -1825,7 +1813,7 @@ function CatalogScreen({
       <div className="screen-content catalog-content">
         <div>
           <h1>Apoio</h1>
-          <p className="lead">Escolha uma estratégia que faça sentido para você agora.</p>
+          <p className="lead">Encontre um apoio para o momento que está vivendo. Comece por algo simples.</p>
         </div>
         <div className="chip-list" aria-label="Filtros de categoria">
           {categories.map((category) => (
@@ -1859,12 +1847,13 @@ function CatalogScreen({
                   }
                 >
                   <span className="strategy-icon strategy-icon--editorial">
-                    <EditorialIllustration compact kind={
-                      item.id === "pause" ? "pause" : item.id === "breath" ? "breath" :
-                      item.id === "music" ? "music" : item.id === "space" ? "space" :
-                      item.id === "pairs" || item.id === "path" ? "game" :
-                      item.id === "stories" ? "social" : item.id === "outside" ? "outside" : "home"
-                    } />
+                    {item.id === "pause" || item.id === "music" ?
+                      <img className="catalog-real-photo" src={`/images/banners/${item.id}.webp`} alt="" loading="lazy" /> :
+                      <EditorialIllustration compact kind={
+                        item.id === "breath" ? "breath" : item.id === "space" ? "space" :
+                        item.id === "pairs" || item.id === "path" ? "game" :
+                        item.id === "stories" ? "social" : item.id === "outside" ? "outside" : "home"
+                      } /> }
                   </span>
                   <span className="strategy-card__copy">
                     <b>{item.title}</b>
@@ -1875,19 +1864,19 @@ function CatalogScreen({
                     ›
                   </span>
                 </button>
-                {["pause", "breath", "music", "space"].includes(item.id) && (
+                {item.screen && (
                   <button
-                    className={`C07-FavoriteToggle favorite-toggle ${favorites.includes(item.id as StrategyId) ? "favorite-toggle--on" : ""}`}
-                    onClick={() => onToggleFavorite(item.id as StrategyId)}
+                    className={`C07-FavoriteToggle favorite-toggle ${favorites.includes(item.id) ? "favorite-toggle--on" : ""}`}
+                    onClick={() => onToggleFavorite(item.id)}
                     aria-label={
-                      favorites.includes(item.id as StrategyId)
+                      favorites.includes(item.id)
                         ? `Remover ${item.title} das preferidas`
                         : `Adicionar ${item.title} às preferidas`
                     }
                   >
                     <Icon name="heart" size={19} />
                     <span>
-                      {favorites.includes(item.id as StrategyId) ? "Preferida" : "Favoritar"}
+                      {favorites.includes(item.id) ? "Preferida" : "Favoritar"}
                     </span>
                   </button>
                 )}
@@ -1897,16 +1886,16 @@ function CatalogScreen({
         ) : (
           <div className="empty-state">
             <h2>Nenhuma opção nesta categoria</h2>
-            <p>Você pode explorar todas as estratégias ou iniciar o apoio opcional.</p>
+            <p>Veja outras possibilidades. Talvez uma delas ajude agora.</p>
             <Button variant="secondary" onClick={() => onFilter("Todas")}>
               Ver todas as opções
             </Button>
           </div>
         )}
         <div className="catalog-footer">
-          <p>Não encontrou o que procura?</p>
+          <p>Quer uma sugestão para começar?</p>
           <Button variant="secondary" onClick={onOpenSupport}>
-            Quero ajuda para escolher
+            Receber uma sugestão
           </Button>
         </div>
       </div>
@@ -1938,10 +1927,15 @@ const favoriteDetails: Record<
   },
   space: {
     title: "Monte seu espaço",
-    description: "Atividade visual livre, sem pontuação.",
+    description: "Crie e organize um ambiente visual.",
     screen: "T10",
     icon: "grid",
   },
+  pairs: {title:"Combine os pares", description:"Encontre formas iguais, um par de cada vez.", screen:"T22", icon:"grid"},
+  path: {title:"Desenhe o caminho", description:"Trace um caminho visual.", screen:"T23", icon:"grid"},
+  guide: {title:"Orientações breves", description:"Uma sequência de ideias práticas para este momento.", screen:"T11", icon:"leaf"},
+  stories: {title:"Histórias sociais", description:"Situações cotidianas em cenas curtas.", screen:"T14", icon:"bookmark"},
+  outside: {title:"Apoio fora da tela", description:"Um próximo passo no ambiente ao seu redor.", screen:"T16", icon:"leaf"},
 };
 
 function FavoritesScreen({
@@ -1965,7 +1959,7 @@ function FavoritesScreen({
       <div className="screen-content resource-content">
         <div>
           <h1>Preferidas</h1>
-          <p className="lead">As estratégias que você marca ficam aqui nesta sessão.</p>
+          <p className="lead">Guarde seus apoios preferidos e encontre-os rapidamente quando precisar.</p>
         </div>
         {favorites.length === 0 ? (
           <div className="C26-EmptyState favorites-empty">
@@ -1973,7 +1967,7 @@ function FavoritesScreen({
               <Icon name="heart" size={42} />
             </span>
             <h2>Nenhuma preferida ainda</h2>
-            <p>Você pode explorar o catálogo e marcar opções para encontrar depois.</p>
+            <p>Guarde aqui o que funcionou bem. Assim, fica fácil encontrar da próxima vez.</p>
             <Button onClick={onCatalog}>Explorar estratégias</Button>
           </div>
         ) : (
@@ -2102,7 +2096,7 @@ function PersonalStrategiesScreen({
                   : "Nova estratégia"}
               </h1>
               <p className="lead">
-                Descreva um recurso que funciona para você. Tudo fica apenas nesta sessão.
+                Registre uma ideia que costuma ajudar — por exemplo, ouvir uma música familiar ou fazer uma pausa.
               </p>
             </div>
             <div className="strategy-form">
@@ -2168,7 +2162,7 @@ function PersonalStrategiesScreen({
           <>
             <div>
               <h1>Minhas estratégias</h1>
-              <p className="lead">Registre ideias que você escolheu usar.</p>
+              <p className="lead">Crie seu próprio conjunto de apoios para consultar quando precisar.</p>
             </div>
             {strategies.length ? (
               <div className="simple-list">
@@ -2246,16 +2240,16 @@ function PauseScreen({
       <div className="screen-content pause-content resource-content">
         <div>
           <h1>Pausa silenciosa</h1>
-          <p className="lead">Um momento sem pressa e sem exigências.</p>
+          <p className="lead">Você já fez bastante por agora. Encontre um instante de tranquilidade.</p>
         </div>
-        <EditorialIllustration kind="pause" />
+        <img className="resource-photo" src="/images/banners/pause.webp" alt="Praia tranquila iluminada pela luz do entardecer" />
         <div className="centered-copy">
-          <h2>Você pode ficar aqui ou sair</h2>
-          <p>Não há contagem de tempo. Nenhuma ação é necessária.</p>
+          <h2>Dê a si mesmo este intervalo</h2>
+          <p>Olhe ao redor, encontre um ponto de conforto e perceba como você se sente. A pausa está acontecendo.</p>
         </div>
         <div className="resource-actions">
           <Button variant="secondary" onClick={onContinue}>
-            Continuar em pausa
+            Estou bem aqui
           </Button>
           <Button onClick={onClose}>Sair da pausa</Button>
         </div>
@@ -2289,19 +2283,18 @@ function BreathingIntroScreen({
       <div className="screen-content resource-content breathing-content">
         <div>
           <h1>Respiração</h1>
-          <p className="lead">Você decide se deseja começar.</p>
+          <p className="lead">Vamos fazer algumas respirações juntos.</p>
         </div>
         <BreathingVisual />
         <div className="quiet-card">
           <h2>Respire no seu ritmo</h2>
           <p>
-            Você pode observar a orientação, pausar ou encerrar quando desejar. Nenhum ritmo será
-            imposto.
+            Acompanhe a animação: inspire suavemente e solte o ar devagar. Não precisa forçar a respiração.
           </p>
         </div>
         <div className="information-note">
           <Icon name="info" size={18} />
-          Sem áudio por padrão. Contador de tempo opcional na próxima tela.
+          O círculo começa a guiar o ritmo automaticamente quando você iniciar.
         </div>
         <Button onClick={onStart}>Iniciar exercício</Button>
       </div>
@@ -2309,43 +2302,50 @@ function BreathingIntroScreen({
   );
 }
 
-function BreathingExerciseScreen({
-  state,
-  onBack,
-  onClose,
-  onToggle,
-}: {
-  state: BreathState;
-  onBack: () => void;
-  onClose: () => void;
-  onToggle: () => void;
+function BreathingExerciseScreen({state,onBack,onClose,onToggle}:{
+  state:BreathState; onBack:()=>void; onClose:()=>void; onToggle:()=>void;
 }) {
-  const active = state === "active";
-  const [timerVisible, setTimerVisible] = useState(false);
-  const [illustrationMoving, setIllustrationMoving] = useState(false);
-  const [seconds, setSeconds] = useState(0);
-  useEffect(() => {
-    if (!timerVisible || !active) return;
-    const timer = window.setInterval(() => setSeconds(value => value + 1), 1000);
-    return () => window.clearInterval(timer);
-  }, [timerVisible, active]);
-  const minutes = `${Math.floor(seconds / 60)}`.padStart(2, "0");
-  const remainder = `${seconds % 60}`.padStart(2, "0");
-  return (
-    <section className="T07-BreathingExercise screen">
-      <AppHeader title="Respiração" onBack={onBack} onClose={onClose} />
-      <div className="screen-content resource-content breathing-content">
-        <div><h1>Respiração</h1><p className="lead">Inspire e expire de maneira confortável, sem ritmo obrigatório.</p></div>
-        <span className="state-chip">{active ? "Exercício em andamento" : state === "idle" ? "Pronto para começar" : "Exercício pausado"}</span>
-        <div className={illustrationMoving ? "breathing-illustration--moving" : "breathing-illustration--still"}><BreathingVisual /></div>
-        <div className="centered-copy"><h2>{active ? "Respire da forma mais confortável." : state === "idle" ? "Comece quando quiser." : "Quando quiser, retome."}</h2><p>O desenho é estático e não indica um ritmo obrigatório.</p></div>
-        <label className="timer-toggle"><input type="checkbox" checked={illustrationMoving} onChange={event => setIllustrationMoving(event.target.checked)} /><span>Animar a ilustração (opcional, sem ritmo imposto)</span></label>
-        <label className="timer-toggle"><input type="checkbox" checked={timerVisible} onChange={event => setTimerVisible(event.target.checked)} /><span>Mostrar tempo decorrido (opcional)</span></label>
-        {timerVisible && <div className="breathing-time" role="timer" aria-label={`Tempo decorrido: ${minutes} minutos e ${remainder} segundos`}>{minutes}:{remainder}<small>Sem limite ou meta de tempo</small></div>}
-        <div className="resource-actions"><Button onClick={onToggle}>{active ? "Pausar" : state === "idle" ? "Iniciar respiração" : "Retomar"}</Button><Button variant="secondary" onClick={onClose}>Sair do exercício</Button></div>
+  const active=state==="active";
+  const [elapsed,setElapsed]=useState(0);
+  const [reducedMotion,setReducedMotion]=useState(false);
+  useEffect(()=>{
+    const media=window.matchMedia("(prefers-reduced-motion: reduce)");
+    const sync=()=>setReducedMotion(media.matches);
+    sync();media.addEventListener("change",sync);
+    return()=>media.removeEventListener("change",sync);
+  },[]);
+  useEffect(()=>{
+    if(!active)return;
+    const timer=window.setInterval(()=>setElapsed(v=>v+1),1000);
+    return()=>window.clearInterval(timer);
+  },[active]);
+  const cycle=elapsed%10;
+  const inhaling=cycle<4;
+  const phase=inhaling?"Inspire":"Expire";
+  const remaining=inhaling?4-cycle:10-cycle;
+  const rounds=Math.floor(elapsed/10);
+  return <section className="T07-BreathingExercise screen">
+    <AppHeader title="Respiração guiada" onBack={onBack} onClose={onClose}/>
+    <div className="screen-content resource-content guided-breath-screen">
+      <div><h1>Vamos respirar juntos</h1><p className="lead">Acompanhe o círculo: o ar entra suavemente e sai sem pressa.</p></div>
+      <div className="breath-cycle" role="group" aria-label="Guia visual de respiração">
+        <span className="breath-cycle__ambient" aria-hidden="true"/>
+        <div className={`breath-cycle__orb ${active ? (inhaling?"breath-cycle__orb--inhale":"breath-cycle__orb--exhale") : "breath-cycle__orb--paused"} ${reducedMotion?"breath-cycle__orb--static":""}`}>
+          <span className="breath-cycle__phase" aria-live="off">{active?phase:"Pausa"}</span>
+          <strong className="breath-cycle__seconds" aria-label={`${remaining} segundos`}>{active ? remaining : "—"}</strong>
+          <span className="breath-cycle__unit">{active?"segundos":"sem pressa"}</span>
+        </div>
+        <div className="breath-cycle__progress" aria-hidden="true"><span style={{width:`${(cycle/10)*100}%`}} /></div>
       </div>
-    </section>
-  );
+      <div className="breath-guidance" aria-live="polite">
+        <h2>{!active?"Vamos no seu tempo.":inhaling?"Puxe o ar com suavidade.":"Agora solte o ar devagar."}</h2>
+        <p>{inhaling?"Deixe os ombros relaxados e sinta o ar entrando.":"Relaxe a mandíbula e deixe o corpo encontrar seu conforto."}</p>
+      </div>
+      <p className="breath-progress-text">{rounds ? `${rounds} ${rounds===1?"ciclo concluído":"ciclos concluídos"} · `:""}Tempo de prática: {Math.floor(elapsed/60)}:{String(elapsed%60).padStart(2,"0")}</p>
+      <div className="information-note"><Icon name="info" size={18}/>Use o ritmo como referência, nunca como obrigação. Se sentir tontura ou desconforto, volte à sua respiração habitual e encerre.</div>
+      <div className="resource-actions"><Button onClick={onToggle}>{active?"Pausar respiração":"Continuar respiração"}</Button><Button variant="secondary" onClick={onClose}>Encerrar exercício</Button></div>
+    </div>
+  </section>;
 }
 
 function MusicLibraryScreen({
@@ -2384,7 +2384,7 @@ function MusicLibraryScreen({
       <div className="screen-content resource-content audio-library">
         <div>
           <h1>Escolha o que ouvir</h1>
-          <p className="lead">Sons e músicas reais, sem reprodução automática. Você decide o estilo, o volume e quando parar.</p>
+          <p className="lead">Uma biblioteca para acompanhar diferentes momentos. Encontre uma faixa e ajuste o volume ao seu conforto.</p>
         </div>
         <div className="audio-library-banner" aria-hidden="true">
           <svg viewBox="0 0 350 125" width="100%" height="100%" preserveAspectRatio="xMidYMid slice">
@@ -2623,7 +2623,7 @@ function SpaceGameScreen({
     <section className="T10-SpaceGame screen">
       <AppHeader title="Monte seu espaço" onBack={onBack} onClose={onClose}/>
       <div className="screen-content resource-content game-content">
-        <div><h1>Monte seu espaço</h1><p className="lead">Combine objetos e desenhe livremente. Não há pontuação.</p></div>
+        <div><h1>Monte seu espaço</h1><p className="lead">Solte a criatividade: combine objetos, desenhe e monte um lugar com a sua cara.</p></div>
         <div className="scene-canvas" ref={canvasRef} onPointerMove={moveDrag}
           onPointerUp={()=>{dragRef.current=null;}} onPointerCancel={()=>{dragRef.current=null;}}>
           {items.length===0 && strokes.length===0 && !currentStroke.length && <p>Adicione objetos ou escolha Desenhar para começar.</p>}
@@ -2725,7 +2725,7 @@ function MatchingGameScreen({
       <div className="screen-content resource-content game-content">
         <div>
           <h1>Combine os pares</h1>
-          <p className="lead">Escolha duas figuras que pareçam iguais.</p>
+          <p className="lead">Observe as formas e descubra os pares correspondentes.</p>
         </div>
         <div className="matching-note">Sem limite de tentativas, tempo ou pontuação.</div>
         <div className="game-difficulty" role="group" aria-label="Escolha a dificuldade, sem progressão obrigatória">
@@ -2791,7 +2791,7 @@ function PathGameScreen({
     <section className="T23-PathGame screen">
       <AppHeader title="Desenhe o caminho" onBack={onBack} onClose={onClose} />
       <div className="screen-content resource-content game-content">
-        <div><h1>Desenhe o caminho</h1><p className="lead">Conecte os pontos numerados. Você pode voltar ou recomeçar.</p></div>
+        <div><h1>Desenhe o caminho</h1><p className="lead">Comece pelo primeiro ponto e acompanhe o caminho que se forma.</p></div>
         <div className="path-canvas path-canvas--svg">
           <span className="path-label" role="status">{stateLabel}</span>
           <svg className="path-svg" viewBox="0 0 320 320" preserveAspectRatio="none" aria-hidden="true">
@@ -2838,7 +2838,7 @@ function ConfirmationScreen({
         </span>
         <h1>Registrado</h1>
         <p className="lead">
-          Sua escolha foi registrada apenas nesta demonstração, depois da confirmação.
+          Seu registro está salvo nesta demonstração. Agora você pode seguir para o que for mais útil.
         </p>
         <div className="quiet-card">
           <h2>Você mantém o controle.</h2>
@@ -2885,21 +2885,9 @@ function ConfirmationDialog({
 }
 
 const guidanceSteps = [
-  {
-    label: "Uma possibilidade",
-    title: "Escolha o próximo passo.",
-    text: "Se quiser, procure um lugar mais tranquilo ou continue onde está.",
-  },
-  {
-    label: "Você pode observar",
-    title: "Perceba o que está ao redor.",
-    text: "Você decide se quer continuar, fazer uma pausa ou escolher outra opção.",
-  },
-  {
-    label: "A escolha continua sua",
-    title: "Você pode sair quando quiser.",
-    text: "Não é necessário terminar esta orientação para acessar outras opções.",
-  },
+  { label: "Primeiro passo", title: "Encontre um ponto de conforto.", text: "Percebeu muitos estímulos? Afaste-se um pouco do barulho ou da luz, se for possível. Um passo pequeno já ajuda a organizar o momento." },
+  { label: "Agora, observe", title: "Dê espaço ao que está sentindo.", text: "Repare se os ombros, mãos ou mandíbula estão tensos. Solte essa tensão aos poucos, sem se cobrar uma mudança imediata." },
+  { label: "Próximo passo", title: "Escolha uma coisa que pode ajudar.", text: "Uma música conhecida, uma pausa ou uma pessoa de confiança podem ser bons pontos de partida. Comece com o que estiver ao seu alcance." },
 ];
 
 type StoryData = {
@@ -2987,6 +2975,17 @@ const storyData: Record<StoryId, StoryData> = {
   },
 };
 
+const storyMentorTips: Record<StoryId, string[]> = {
+  sons: ["Quando muitos sons se misturam, vale perceber o que mais incomoda e o que ajuda você a se sentir melhor.", "Se houver fones ou um canto menos movimentado, experimente esse recurso para reduzir estímulos.", "Você pode se afastar por alguns instantes e decidir depois se deseja retornar."],
+  mudanca: ["Mudanças inesperadas podem ser difíceis de acompanhar. Comece identificando o que realmente mudou.", "Perguntar o que vai acontecer agora ajuda a tornar a situação mais previsível.", "Peça uma explicação curta ou alguns minutos para se reorganizar."],
+  frustracao: ["Quando algo não sai como você esperava, isso pode ser chato mesmo. Observe o que aconteceu, sem se julgar.", "Aqui você pode experimentar de novo. Não há nota nem punição.", "Se continuar frustrante, mudar de jogo ou fazer uma pausa também é uma boa decisão."],
+  social: ["É comum uma mensagem soar diferente para pessoas diferentes. Não é preciso adivinhar tudo.", "Uma pergunta direta pode evitar confusões: ‘Você pode explicar de outro jeito?’", "Se a conversa estiver pesada, você pode retomá-la em outro momento."],
+  medo: ["O desconhecido pode trazer muitas perguntas. Procure uma informação concreta sobre o que virá.", "Saber quem estará presente e qual é o próximo passo pode trazer mais segurança.", "Se precisar, peça companhia a alguém de confiança."],
+  raiva: ["Sentir raiva é uma experiência humana. O importante é encontrar uma forma segura de atravessar esse momento.", "Diminua os estímulos ao redor, se possível, e perceba o que está aumentando a tensão.", "Você pode avisar que precisa de espaço antes de continuar a conversa ou a atividade."],
+  cansaco: ["Seu corpo pode estar pedindo uma pausa. Observe os sinais que aparecem depois de muito esforço.", "Um intervalo breve, água ou menos estímulos podem ajudar a recuperar energia.", "Retomar depois é uma possibilidade. Descansar não significa desistir."],
+  dor: ["Dor e mal-estar merecem atenção. O aplicativo não identifica suas causas.", "Você pode pedir ajuda dizendo onde dói, mesmo sem explicar todos os detalhes.", "Se a dor for intensa, piorar ou persistir, procure avaliação de um profissional de saúde."],
+};
+
 function GuidanceScreen({
   step,
   friendName,
@@ -3015,7 +3014,7 @@ function GuidanceScreen({
       <div className="screen-content resource-content guidance-content">
         <div>
           <h1>Orientações breves</h1>
-          <p className="lead">Uma orientação por vez, no seu ritmo.</p>
+          <p className="lead">Vamos resolver uma coisa de cada vez. Você não precisa dar conta de tudo agora.</p>
         </div>
         <div className="story-progress">
           <span style={{ width: `${((step + 1) / guidanceSteps.length) * 100}%` }} />
@@ -3075,8 +3074,8 @@ function StoryListScreen({
           <h1>Histórias sociais</h1>
           <p className="lead">
             {context && context !== "Não quero responder"
-              ? `Você declarou: ${context}. Escolha uma história se quiser.`
-              : "Escolha uma situação para ler, se desejar."}
+              ? `Vamos olhar com calma para situações relacionadas a ${context.toLowerCase()}.`
+              : "Algumas situações ficam mais claras quando conhecemos os próximos passos."}
           </p>
         </div>
         <EditorialIllustration kind="change" compact />
@@ -3173,6 +3172,7 @@ function StoryReaderScreen({
           <h2>{current.heading}</h2>
           <span>{current.text}</span>
         </article>
+        <div className="mentor-tip"><b>Para levar deste momento</b><p>{storyMentorTips[storyId][scene] ?? "Uma escolha pequena pode ajudar neste momento."}</p></div>
         <div className="two-actions">
           <Button variant="secondary" onClick={onPrevious}>
             {scene === 0 ? "Voltar à lista" : "Anterior"}
@@ -3207,12 +3207,12 @@ function OutsideSupportScreen({
 }) {
   const [detail, setDetail] = useState<"break" | "object" | "person" | null>(null);
   const options: Array<{id: "break" | "object" | "person"; title: string; summary: string; art: IllustrationKind; steps: string[]; action: string}> = [
-    {id: "break", title: "Fazer uma pausa fora da tela", summary: "Um intervalo sem cronômetro ou tarefa obrigatória.", art: "outside",
-      steps: ["Se houver um espaço confortável e seguro disponível, você pode se afastar da tela por um momento.", "Você pode olhar para outro lugar, sentar ou ficar em silêncio — somente se desejar.", "Você decide quando voltar, sem precisar cumprir uma duração."] , action: "Encerrar minha pausa" },
-    {id: "object", title: "Usar um objeto conhecido", summary: "Uma possibilidade com algo que já está ao seu alcance.", art: "object",
-      steps: ["Se tiver por perto um objeto familiar e confortável, você pode escolhê-lo.", "Pode ser um tecido, livro, objeto tátil ou outro item de sua preferência.", "Não é necessário utilizar nenhum objeto, e você pode parar quando quiser."], action: "Concluir orientação" },
-    {id: "person", title: "Conversar com alguém de confiança", summary: "Você escolhe se quer companhia ou escuta.", art: "person",
-      steps: ["Se quiser, procure alguém com quem se sinta seguro para conversar.", "Você pode dizer: 'Gostaria de conversar um pouco' ou 'Preciso de companhia agora'.", "Também é possível pedir espaço ou escolher não conversar neste momento."], action: "Concluir orientação" },
+    {id: "break", title: "Fazer uma pausa fora da tela", summary: "Mude de ambiente por alguns instantes e perceba o que fica mais confortável.", art: "outside",
+      steps: ["Procure um lugar tranquilo e seguro. Deixe o celular de lado por um instante.", "Observe a luz, os sons e a temperatura do ambiente. Faça um ajuste que melhore seu conforto.", "Quando se sentir pronto, retome o que estava fazendo — ou continue descansando."] , action: "Encerrar minha pausa" },
+    {id: "object", title: "Usar um objeto conhecido", summary: "Um objeto familiar pode dar um ponto de apoio ao seu momento.", art: "object",
+      steps: ["Olhe ao redor e encontre um objeto conhecido que traga uma sensação agradável.", "Sinta a textura, o peso ou a temperatura do objeto. Foque nesse detalhe por alguns instantes.", "Se isso não ajudar agora, tudo bem: procure outra estratégia."], action: "Concluir orientação" },
+    {id: "person", title: "Conversar com alguém de confiança", summary: "Uma pessoa de confiança pode ouvir você, mesmo sem uma explicação longa.", art: "person",
+      steps: ["Pense em alguém que costuma ouvir você com respeito.", "Uma frase simples pode ajudar: 'Você pode ficar comigo um pouco?'", "Se estiver difícil conversar, pedir companhia em silêncio também é uma forma de apoio."], action: "Concluir orientação" },
   ];
   const chosen = options.find((option) => option.id === detail);
   return (
@@ -3234,7 +3234,7 @@ function OutsideSupportScreen({
           </>
         ) : (
           <>
-            <div><h1>Apoio fora da tela</h1><p className="lead">Você pode escolher um recurso que não depende da tela.</p></div>
+            <div><h1>Apoio fora da tela</h1><p className="lead">Às vezes, o melhor próximo passo acontece fora do celular. Conheça três ideias simples.</p></div>
             <EditorialIllustration kind="outside" compact />
             <div className="outside-options">
               {options.map(option => (
@@ -3245,7 +3245,7 @@ function OutsideSupportScreen({
                 </button>
               ))}
             </div>
-            <div className="information-note"><Icon name="info" size={18} /> Nada é iniciado automaticamente. Você decide se quer usar alguma opção.</div>
+            <div className="information-note"><Icon name="info" size={18} /> As ideias são orientações práticas, não ações automáticas no ambiente real.</div>
             <Button variant="secondary" onClick={onCatalog}>Voltar ao catálogo</Button>
             <Button variant="tertiary" onClick={onEnd}>Encerrar apoio</Button>
           </>
@@ -3587,7 +3587,7 @@ function SetupSensoryScreen({
         <SetupMeta step={2} />
         <div>
           <h1>Recursos disponíveis</h1>
-          <p className="lead">Indique apenas o que você realmente tem à disposição.</p>
+          <p className="lead">Pense nos recursos que já fazem parte do seu dia. Eles podem ser úteis nos momentos mais intensos.</p>
         </div>
         <div className="sensory-list">
           {sensoryDefinitions.map(([id, label]) => (
@@ -3661,7 +3661,7 @@ function SetupMusicScreen({
         <SetupMeta step={3} />
         <div>
           <h1>Preferências musicais</h1>
-          <p className="lead">O silêncio também é uma escolha válida.</p>
+          <p className="lead">Encontre sons e estilos musicais que combinam com você. O silêncio permanece à disposição.</p>
         </div>
         <button
           className={`silence-choice ${draft.silence ? "silence-choice--selected" : ""}`}
@@ -3779,7 +3779,7 @@ function SetupGamesScreen({
         <SetupMeta step={4} />
         <div>
           <h1>Escolher os jogos</h1>
-          <p className="lead">Você pode experimentar antes de marcar preferidas.</p>
+          <p className="lead">Conheça os jogos e guarde seus preferidos para encontrar mais rápido depois.</p>
         </div>
         <div className="game-preview-list">
           {games.map((game) => (
@@ -3834,9 +3834,11 @@ function SetupAvatarScreen({
   onSkip: () => void;
 }) {
   const choices: Array<[AvatarChoice, string]> = [
-    ["none", "Nenhum"],
-    ["neutral1", "Avatar A"],
-    ["neutral2", "Avatar B"],
+    ["none", "Sem avatar"],
+    ["portrait01", "Tranças"], ["portrait02", "Afro curto"], ["portrait03", "Cachos"],
+    ["portrait04", "Ruivo"], ["portrait05", "Cabelo longo"], ["portrait06", "Com óculos"],
+    ["portrait07", "Cabelo raspado"], ["portrait08", "Loiro"], ["portrait09", "Cachos curtos"],
+    ["portrait10", "Afro volumoso"], ["portrait11", "Cabelo castanho"], ["portrait12", "Cabelo curto"],
   ];
   return (
     <section className="T29-AvatarSetup screen">
@@ -3850,7 +3852,7 @@ function SetupAvatarScreen({
         <SetupMeta step={5} />
         <div>
           <h1>Avatar pessoal</h1>
-          <p className="lead">Você pode criar um avatar ou não usar nenhum.</p>
+          <p className="lead">Encontre um retrato com o qual você se identifique. Há diferentes tons de pele, cortes e texturas de cabelo.</p>
         </div>
         <div className="avatar-preview">
           <div className="avatar-preview__art">
@@ -3867,7 +3869,7 @@ function SetupAvatarScreen({
             <small>
               {draft.avatar === "none"
                 ? "Nenhum avatar pessoal será exibido."
-                : `${paletteLabels[draft.avatarPalette]} · ${accessoryLabels[draft.avatarAccessory]}`}
+                : "Retrato selecionado para seu perfil"}
             </small>
           </div>
         </div>
@@ -3880,8 +3882,8 @@ function SetupAvatarScreen({
           />
         </label>
         <div>
-          <SectionTitle title="Aparência" />
-          <div className="avatar-options">
+          <SectionTitle title="Galeria de retratos" />
+          <div className="avatar-options avatar-options--photos">
             {choices.map(([value, label]) => (
               <button
                 className={draft.avatar === value ? "selected" : ""}
@@ -3902,37 +3904,7 @@ function SetupAvatarScreen({
             ))}
           </div>
         </div>
-        <div>
-          <SectionTitle title="Cor" />
-          <div className="appearance-options">
-            {paletteOptions.map(([value, label]) => (
-              <button
-                className={draft.avatarPalette === value ? "selected" : ""}
-                key={value}
-                onClick={() => onPalette(value)}
-                aria-pressed={draft.avatarPalette === value}
-              >
-                <span className={`palette-swatch palette-swatch--${value}`} />
-                {label}
-              </button>
-            ))}
-          </div>
-        </div>
-        <div>
-          <SectionTitle title="Acessório" />
-          <div className="appearance-options">
-            {accessoryOptions.map(([value, label]) => (
-              <button
-                className={draft.avatarAccessory === value ? "selected" : ""}
-                key={value}
-                onClick={() => onAccessory(value)}
-                aria-pressed={draft.avatarAccessory === value}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-        </div>
+        <p className="avatar-selection-note">A diversidade está nos próprios retratos — não é necessário configurar cores ou acessórios separadamente.</p>
         <StepNavigation
           leadingAction={{ label: "Ignorar", onClick: onSkip }}
           trailingAction={{ label: "Salvar e seguir", onClick: onNext }}
@@ -3975,7 +3947,7 @@ function SetupFriendScreen({
         <SetupMeta step={6} />
         <div>
           <h1>Meu amigo virtual</h1>
-          <p className="lead">Um companheiro discreto na área principal de apoio.</p>
+          <p className="lead">Escolha um retrato para representar quem te acompanha nas orientações.</p>
         </div>
         <div className="friend-setup-preview">
           <VirtualFriendAvatar
@@ -3988,7 +3960,7 @@ function SetupFriendScreen({
           <div>
             <b>{draft.friendName || "Amigo padrão"}</b>
             <small>
-              {paletteLabels[draft.friendPalette]} · {accessoryLabels[draft.friendAccessory]}
+              Retrato do amigo virtual
             </small>
           </div>
         </div>
@@ -4002,7 +3974,7 @@ function SetupFriendScreen({
         </label>
         <div>
           <SectionTitle title="Escolha uma aparência" />
-          <div className="style-options">
+          <div className="style-options style-options--photos">
             {friendStyleOptions.map(([style, label]) => (
               <button
                 className={draft.friendStyle === style ? "selected" : ""}
@@ -4024,40 +3996,9 @@ function SetupFriendScreen({
             ))}
           </div>
         </div>
-        <div>
-          <SectionTitle title="Cor" />
-          <div className="appearance-options">
-            {paletteOptions.map(([value, label]) => (
-              <button
-                className={draft.friendPalette === value ? "selected" : ""}
-                onClick={() => onPalette(value)}
-                key={value}
-                aria-pressed={draft.friendPalette === value}
-              >
-                <span className={`palette-swatch palette-swatch--${value}`} />
-                {label}
-              </button>
-            ))}
-          </div>
-        </div>
-        <div>
-          <SectionTitle title="Acessório" />
-          <div className="appearance-options">
-            {accessoryOptions.map(([value, label]) => (
-              <button
-                className={draft.friendAccessory === value ? "selected" : ""}
-                onClick={() => onAccessory(value)}
-                key={value}
-                aria-pressed={draft.friendAccessory === value}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-        </div>
         <div className="information-note">
           <Icon name="info" size={18} />
-          Se ignorar, o amigo padrão permanece no apoio. Sem escuta real.
+          Se ignorar, o amigo padrão permanece no apoio. Esta é apenas uma demonstração, sem uso de microfone.
         </div>
         <StepNavigation
           leadingAction={{ label: "Ignorar", onClick: onSkip }}
@@ -4101,7 +4042,7 @@ function SetupReviewScreen({
       "Avatar pessoal",
       draft.avatar === "none"
         ? "Nenhum"
-        : `${paletteLabels[draft.avatarPalette]} · ${accessoryLabels[draft.avatarAccessory]}`,
+        : "Retrato selecionado para seu perfil",
     ],
     [
       "Amigo virtual",
@@ -4120,7 +4061,7 @@ function SetupReviewScreen({
         <SetupMeta step={7} />
         <div>
           <h1>Concluir configuração</h1>
-          <p className="lead">Confira suas escolhas. Você pode mudar depois.</p>
+          <p className="lead">Está quase pronto. Veja como ficou seu espaço e comece a explorar.</p>
         </div>
         <div className="review-list">
           {rows.map(([label, value]) => (
@@ -4161,9 +4102,11 @@ function AppearanceScreen({
   onSelectAvatar: (avatar: AvatarChoice) => void;
 }) {
   const choices: Array<[AvatarChoice, string]> = [
-    ["none", "Nenhum"],
-    ["neutral1", "Avatar A"],
-    ["neutral2", "Avatar B"],
+    ["none", "Sem avatar"],
+    ["portrait01", "Tranças"], ["portrait02", "Afro curto"], ["portrait03", "Cachos"],
+    ["portrait04", "Ruivo"], ["portrait05", "Cabelo longo"], ["portrait06", "Com óculos"],
+    ["portrait07", "Cabelo raspado"], ["portrait08", "Loiro"], ["portrait09", "Cachos curtos"],
+    ["portrait10", "Afro volumoso"], ["portrait11", "Cabelo castanho"], ["portrait12", "Cabelo curto"],
   ];
   return (
     <section className="T20-Appearance screen">
@@ -4171,7 +4114,7 @@ function AppearanceScreen({
       <div className="screen-content resource-content">
         <div>
           <h1>Aparência</h1>
-          <p className="lead">Escolha uma visualização confortável para você.</p>
+          <p className="lead">Deixe o CalmTEA com a sua cara e mais agradável de usar.</p>
         </div>
         <div>
           <SectionTitle title="Temas" />
@@ -4193,7 +4136,7 @@ function AppearanceScreen({
           </div>
         </div>
         <div>
-          <SectionTitle title="Avatar pessoal" />
+          <SectionTitle title="Escolha seu retrato" />
           <div className="appearance-avatar-preview">
             <PersonAvatar
               avatar={state.selectedAvatar}
@@ -4207,11 +4150,11 @@ function AppearanceScreen({
               <small>
                 {state.selectedAvatar === "none"
                   ? "Nenhum avatar pessoal selecionado."
-                  : `${paletteLabels[state.avatarPalette]} · ${accessoryLabels[state.avatarAccessory]}`}
+                  : "Seu retrato aparece no perfil"}
               </small>
             </div>
           </div>
-          <div className="avatar-options">
+          <div className="avatar-options avatar-options--photos">
             {choices.map(([value, label]) => (
               <button
                 className={state.selectedAvatar === value ? "selected" : ""}
@@ -4283,7 +4226,7 @@ function ProfileScreen({
       "Avatar pessoal",
       state.selectedAvatar === "none"
         ? "Nenhum"
-        : `${paletteLabels[state.avatarPalette]} · ${accessoryLabels[state.avatarAccessory]}`,
+        : "Seu retrato aparece no perfil",
       "T29",
     ],
   ];
@@ -4293,7 +4236,7 @@ function ProfileScreen({
       <div className="screen-content resource-content">
         <div>
           <h1>Meu perfil</h1>
-          <p className="lead">Edite quando quiser. Tudo é opcional.</p>
+          <p className="lead">Deixe as atividades e os apoios alinhados às suas preferências.</p>
         </div>
         <div className="profile-identity-preview">
           <div>
@@ -4313,7 +4256,7 @@ function ProfileScreen({
               <small>
                 {state.selectedAvatar === "none"
                   ? "Nenhum avatar selecionado"
-                  : `${paletteLabels[state.avatarPalette]} · ${accessoryLabels[state.avatarAccessory]}`}
+                  : "Seu retrato aparece no perfil"}
               </small>
             </span>
           </div>
@@ -4328,7 +4271,7 @@ function ProfileScreen({
             <span>
               <b>{state.friendConfigured ? state.friendName : "Amigo padrão"}</b>
               <small>
-                {paletteLabels[state.friendPalette]} · {accessoryLabels[state.friendAccessory]}
+                Retrato de apoio
               </small>
             </span>
           </div>
@@ -4405,7 +4348,7 @@ function FriendDetailsScreen({
       <div className="screen-content resource-content">
         <div>
           <h1>Meu amigo virtual</h1>
-          <p className="lead">Veja a aparência e os estados usados no apoio.</p>
+          <p className="lead">Conheça quem aparece ao seu lado nas orientações e histórias.</p>
         </div>
         <div className="friend-details-card">
           <VirtualFriendAvatar
@@ -4418,7 +4361,7 @@ function FriendDetailsScreen({
           <div>
             <b>{friendName}</b>
             <small>
-              {paletteLabels[state.friendPalette]} · {accessoryLabels[state.friendAccessory]}
+              Retrato de apoio
             </small>
             <button onClick={onEdit}>Editar nome e aparência</button>
           </div>
@@ -4486,28 +4429,20 @@ function CheckInScreen({
       <div className="screen-content">
         <p className="eyebrow">AUTORRELATO OPCIONAL</p>
         <h1>Como você está se sentindo?</h1>
-        <p className="lead">
-          Escolha apenas se quiser. Não há resposta certa e nada é deduzido automaticamente.
-        </p>
-        <div className="choice-list">
-          {[
-            "Mais calmo(a)",
-            "Mais agitado(a)",
-            "Com foco",
-            "Com muita demanda",
-            "Precisando de apoio",
-            "Prefiro não informar",
-          ].map((choice) => (
-            <button
-              className={`C21-CheckInOption choice-button ${selected === choice ? "choice-button--selected" : ""}`}
-              key={choice}
-              onClick={() => onChoice(choice)}
-              aria-pressed={selected === choice}
-            >
-              <span>{choice}</span>
-              {selected === choice && <Icon name="check" size={20} />}
-            </button>
-          ))}
+        <p className="lead">Reconhecer o que você está sentindo pode ajudar a encontrar o próximo passo.</p>
+        <div className="choice-list mood-grid" role="group" aria-label="Como você está se sentindo">
+          {([
+            ["Mais calmo(a)","😌","Mais tranquilo(a)"],
+            ["Mais agitado(a)","😣","Agitado(a)"],
+            ["Com foco","🙂","Concentrado(a)"],
+            ["Com muita demanda","😮‍💨","Sobrecarregado(a)"],
+            ["Precisando de apoio","🥺","Preciso de apoio"],
+            ["Prefiro não informar","😶","Prefiro não dizer"],
+          ] as const).map(([choice,emoji,label]) => <button key={choice}
+            className={`C21-CheckInOption choice-button mood-option ${selected===choice?"choice-button--selected":""}`}
+            onClick={()=>onChoice(choice)} aria-pressed={selected===choice} aria-label={label}>
+              <span className="mood-option__emoji" aria-hidden="true">{emoji}</span><span>{label}</span>
+            </button>)}
         </div>
         <label className="C18-TextField text-field">
           <span>Quer acrescentar algo? (opcional)</span>
@@ -4520,14 +4455,9 @@ function CheckInScreen({
         </label>
         <div className="screen-actions">
           <Button onClick={onContinue}>{source === "support" ? "Confirmar e continuar" : "Confirmar registro"}</Button>
-          <Button variant="secondary" onClick={onSkip}>
-            Ignorar
-          </Button>
-          <Button variant="tertiary" onClick={onCancel}>
-            Cancelar
-          </Button>
+          <Button variant="secondary" onClick={onSkip}>Pular esta etapa</Button>
         </div>
-        <p className="form-note">Cancelar ou ignorar não registra nenhuma resposta.</p>
+        <p className="form-note">Sua resposta fica apenas nesta sessão de demonstração.</p>
       </div>
     </section>
   );
@@ -4571,7 +4501,7 @@ function ContextScreen({
       <div className="screen-content">
         <p className="eyebrow">CONTEXTO OPCIONAL</p>
         <h1>O que aconteceu?</h1>
-        <p className="lead">Marque uma situação se quiser. Você pode continuar sem responder.</p>
+        <p className="lead">O que mais pesou neste momento? Isso nos ajuda a encontrar um apoio mais útil.</p>
         <div className="context-grid">
           {options.map((option) => (
             <button
@@ -4602,9 +4532,6 @@ function ContextScreen({
         </button>
         <div className="screen-actions">
           <Button onClick={onContinue}>Ver sugestões de apoio</Button>
-          <Button variant="tertiary" onClick={onCancel}>
-            Cancelar
-          </Button>
         </div>
       </div>
     </section>
@@ -4638,8 +4565,8 @@ function SuggestionsScreen({
           {state.context === "Outra situação" && context
             ? `Você descreveu: ${context}. As opções continuam gerais, sem interpretar esse texto.`
             : context && context !== "Não quero responder"
-              ? `Estas opções consideram o contexto que você declarou: ${context}.`
-              : "Estas são opções gerais. Nenhum sentimento ou situação foi presumido."}
+              ? `Você mencionou ${context}. Aqui estão três caminhos para lidar com esse momento.`
+              : "Preparei algumas possibilidades para você começar. Experimente aquela que mais chamar sua atenção."}
         </p>
         <div className="suggestion-list">
           {suggestions.map(([title, reason, category]) => (
@@ -4650,7 +4577,7 @@ function SuggestionsScreen({
               <Button variant="secondary" onClick={() => onRecommendation(title, category)}>
                 {title === "Catálogo completo" ? "Explorar catálogo" :
                   title === "Pausa silenciosa" ? "Iniciar pausa" :
-                  title === "Respiração voluntária" ? "Abrir respiração" :
+                  title === "Respiração guiada" || title === "Respiração voluntária" ? "Começar respiração" :
                   title === "Músicas e sons" ? "Escolher som ou música" :
                   title === "História contextual" ? "Ler história" :
                   title === "Orientação breve" ? "Ver orientação" :
@@ -4697,7 +4624,7 @@ function SettingsScreen({
         <p className="eyebrow">CONFORTO E LEITURA</p>
         <h1>Deixe a apresentação mais confortável.</h1>
         <p className="lead">
-          Estas escolhas são reversíveis e permanecem só nesta sessão de demonstração.
+          Ajuste luz, texto e movimento para deixar a leitura mais confortável.
         </p>
         <div className="settings-card">
           <Toggle

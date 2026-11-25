@@ -1,0 +1,12 @@
+
+{
+  "description": "Aplicativo móvel em português que oferece acesso sem cadastro a apoio emocional e minijogos interativos, com navegação simples e acolhedora.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}
+  
